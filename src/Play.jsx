@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom"
 import { useEffect, useRef, useMemo, useState } from "react";
+import "./Play.css"
 import useSWR from "swr";
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 const Play = () =>{
@@ -81,32 +82,68 @@ const Play = () =>{
     const {data: strictLyricData, isLoading: strictLyricLoading} = useSWR(currentTitle !== "" ? `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist.trim())}&track_name=${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher)
     const {data: lyricData, isLoading: lyricLoading} = useSWR(strictLyricData && !strictLyricData.some(l => l.syncedLyrics) ? `https://lrclib.net/api/search?q=${encodeURIComponent(artist.trim())} ${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher);
     const lyrics = useMemo(()=>{
+        if (ready){
         if (!strictLyricData) return null;
-        if (!lyricData) console.log(strictLyricData)
-        if (strictLyricData == [] && !lyricData) return null;
-        if (lyricData) console.log(lyricData)
-        const data = strictLyricData == [] ? lyricData : strictLyricData;
+        if (strictLyricData.length == 0 && !lyricData) return null;
+        const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
         const synced = data.find(l => l.syncedLyrics)
         if (!synced) return null;
         const lines = synced.syncedLyrics.split("\n");
         const times = lines.map(line => line.split("]")[0].slice(1));
-        const verses = lines.map(line => line.split("]")[1].trim());
+        const verses = lines.map(line => line.split("]")[1]?.trim());
+        console.log(times)
         return [times, verses];
-    },[strictLyricData, lyricData])
+        }else {
+            return null;
+        }
+    },[strictLyricData, lyricData, ready])
+    const [currentLyricI, setCurrentLyricI] = useState(0);
+    useEffect(() => {
+        if (!lyrics) return;
+
+        const interval = setInterval(() => {
+            const currentTime = playerRef.current?.getCurrentTime?.();
+            if (currentTime == null) return;
+
+            const index = lyrics[0].findIndex(time => {
+                const [m, s] = time.split(":").map(Number);
+                return m * 60 + s > currentTime;
+            }) - 1;
+
+            if (index !== currentLyricI) {
+                setCurrentLyricI(index);
+            }
+            
+        }, 100);
+
+        return () => clearInterval(interval);
+    }, [lyrics, currentLyricI]);
+    useEffect(()=>{
+        const element = lyricRefs.current[currentLyricI]; 
+        if (element){ 
+            element.scrollIntoView({ behavior: "smooth", block: "end", }); 
+        }
+    },[currentLyricI])
     return (
         <div className="main">
             <div id="yt-player" />
-            <div className="lyrics">
-                {lyrics && lyrics.map((lyric, i) => (
-                    <div
-                    key={i}
-                    ref={el => lyricRefs.current[i] = el}
-                    className={i === currentLyricIndex ? "active" : ""}
-                    >
-                    {lyric.text}
-                    </div>
-                ))}
-            </div>
+            {ready &&
+                <div className="lyrics">
+                    <div className="vSpacer" />
+                    {strictLyricLoading && <h1>Loading...</h1>}
+                    {lyricLoading && <h1>Still loading...</h1>}
+                    {lyrics && lyrics[1].slice(0, currentLyricI + 1).map((lyric, i)=>{
+                        return (<div
+                        key={i}
+                        ref={el => lyricRefs.current[i] = el}
+                        className={`${i === currentLyricI ? "activeLyric " : ""}lyric`}
+                        >
+                            <p className="lyricTime">{lyrics[0][i]}</p> {lyric}
+                        </div>)
+                    })}
+                </div>
+                
+            }
         </div>
         
     )

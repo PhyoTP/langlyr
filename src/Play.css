@@ -1,0 +1,29 @@
+.lyrics{
+    height: 50vh;
+    background-color: aquamarine;
+    overflow-y: auto;
+    padding: 2rem;
+    border-radius: 1rem;
+    width: calc(80% - 4rem);
+    display: flex;
+    flex-direction: column;
+}
+.vSpacer {
+    flex: 1 0 auto;
+}
+.activeLyric{
+    font-weight: 800;
+}
+#yt-player{
+    width: 80%;
+}
+.lyricTime{
+    opacity: 0.5;
+    font-size: 80%;
+    width: 10ch;
+}
+.lyric{
+    display: flex;
+    align-items: center;
+    margin-top: -1rem;
+}
