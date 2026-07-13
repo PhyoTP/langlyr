@@ -1,0 +1,15 @@
+.mainField{
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  width: 100%;
+}
+
+.mainSubmit{
+    background-color: aqua;
+    padding: 0.5em;
+}
+.error{
+    background-color: rgba(255, 0, 0, 0.2);
+    border-left: 0.3rem solid red;
+    padding: 0.5rem;
+}
