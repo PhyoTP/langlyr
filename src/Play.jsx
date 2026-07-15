@@ -3,12 +3,14 @@ import { useEffect, useRef, useMemo, useState } from "react";
 import "./Play.css"
 import useSWR from "swr";
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
-const Play = () =>{
-    const {type, id} = useParams();
+const Play = () => {
+    const { type, id } = useParams();
     const playerRef = useRef(null);
+    const lyricRefs = useRef([]);
     const [currentTitle, setCurrentTitle] = useState("");
     const [ready, setReady] = useState(false);
-    const lyricRefs = useRef([]);
+    const [currentLyricI, setCurrentLyricI] = useState(0);
+    const [translations, setTranslations] = useState({});
     useEffect(() => {
         if (!window.YT) {
             const tag = document.createElement('script');
@@ -22,9 +24,9 @@ const Play = () =>{
 
         function createPlayer() {
             playerRef.current = new window.YT.Player('yt-player', {
-                ...(type == "video" && {videoId: id}),
+                ...(type == "video" && { videoId: id }),
                 playerVars: {
-                    ...(type == "playlist" && {listType: "playlist", list: id}),
+                    ...(type == "playlist" && { listType: "playlist", list: id }),
                     autoplay: 1,
                     modestbranding: 1,
                     shuffle: 1,
@@ -65,7 +67,7 @@ const Play = () =>{
             .replace(/\(?lyric.*\)/i, "")
             .trim()
     }
-    const artist = useMemo(()=>{
+    const artist = useMemo(() => {
         if (!playerRef.current?.getVideoData() || !ready) return;
 
         const videoData = playerRef.current.getVideoData();
@@ -79,25 +81,23 @@ const Play = () =>{
         const pattern = artist.split("").join("\\s*");
         return new RegExp(pattern, "i");
     }
-    const {data: strictLyricData, isLoading: strictLyricLoading} = useSWR(currentTitle !== "" ? `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist.trim())}&track_name=${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher)
-    const {data: lyricData, isLoading: lyricLoading} = useSWR(strictLyricData && !strictLyricData.some(l => l.syncedLyrics) ? `https://lrclib.net/api/search?q=${encodeURIComponent(artist.trim())} ${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher);
-    const lyrics = useMemo(()=>{
-        if (ready){
-        if (!strictLyricData) return null;
-        if (strictLyricData.length == 0 && !lyricData) return null;
-        const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
-        const synced = data.find(l => l.syncedLyrics)
-        if (!synced) return null;
-        const lines = synced.syncedLyrics.split("\n");
-        const times = lines.map(line => line.split("]")[0].slice(1));
-        const verses = lines.map(line => line.split("]")[1]?.trim());
-        console.log(times)
-        return [times, verses];
-        }else {
+    const { data: strictLyricData, isLoading: strictLyricLoading } = useSWR(currentTitle !== "" ? `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist.trim())}&track_name=${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher)
+    const { data: lyricData, isLoading: lyricLoading } = useSWR(strictLyricData && !strictLyricData.some(l => l.syncedLyrics) ? `https://lrclib.net/api/search?q=${encodeURIComponent(artist.trim())} ${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher);
+    const lyrics = useMemo(() => {
+        if (ready) {
+            if (!strictLyricData) return null;
+            if (strictLyricData.length == 0 && !lyricData) return null;
+            const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
+            const synced = data.find(l => l.syncedLyrics)
+            if (!synced) return null;
+            const lines = synced.syncedLyrics.split("\n");
+            const times = lines.map(line => line.split("]")[0].slice(1));
+            const verses = lines.map(line => line.split("]")[1]?.trim());
+            return [times, verses];
+        } else {
             return null;
         }
-    },[strictLyricData, lyricData, ready])
-    const [currentLyricI, setCurrentLyricI] = useState(0);
+    }, [strictLyricData, lyricData, ready])
     useEffect(() => {
         if (!lyrics) return;
 
@@ -112,40 +112,62 @@ const Play = () =>{
 
             if (index !== currentLyricI) {
                 setCurrentLyricI(index);
+                segment(lyrics[1][index])
             }
-            
+
         }, 100);
 
         return () => clearInterval(interval);
     }, [lyrics, currentLyricI]);
-    useEffect(()=>{
-        const element = lyricRefs.current[currentLyricI]; 
-        if (element){ 
-            element.scrollIntoView({ behavior: "smooth", block: "end", }); 
+    useEffect(() => {
+        const element = lyricRefs.current[currentLyricI];
+        if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "end", });
         }
-    },[currentLyricI])
+    }, [currentLyricI])
+    const segment = (str) => {
+        const segmenterJa = new Intl.Segmenter("ja-JP", { granularity: "word" });
+        const segments = segmenterJa.segment(str);
+        return Array.from(segments);
+    }
+    const translate = async (e) => {
+        console.log(e.target.textContent)
+        const response = await fetch('https://api.langlyr.phyotp.dev/jisho?keyword=' + encodeURIComponent(e.target.textContent));
+        const data = await response.json();
+        const words = data?.data;
+        if (words && words.length > 0) {
+            setTranslations(prev => ({...prev, [e.target.textContent]: {"meaning":words[0].senses[0].english_definitions[0],"hiragana":words[0].japanese[0].reading}}))
+        }
+        e.target.style.textDecoration = "none"
+    }
     return (
         <div className="main">
             <div id="yt-player" />
             {ready &&
                 <div className="lyrics">
-                    <div className="vSpacer" />
                     {strictLyricLoading && <h1>Loading...</h1>}
                     {lyricLoading && <h1>Still loading...</h1>}
-                    {lyrics && lyrics[1].slice(0, currentLyricI + 1).map((lyric, i)=>{
+                    {lyrics && lyrics[1].slice(0, currentLyricI + 1).map((lyric, i) => {
                         return (<div
-                        key={i}
-                        ref={el => lyricRefs.current[i] = el}
-                        className={`${i === currentLyricI ? "activeLyric " : ""}lyric`}
+                            key={i}
+                            ref={el => lyricRefs.current[i] = el}
+                            className={`${i === currentLyricI ? "activeLyric " : ""}lyric`}
                         >
-                            <p className="lyricTime">{lyrics[0][i]}</p> {lyric}
+                            <p className="lyricTime">{lyrics[0][i]}</p> {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s) => {
+                                return (
+                                    <span className="segmentContainer">
+                                        <p className="furigana">{translations[s.segment] ? translations[s.segment].hiragana : ""}</p>
+                                        <p className="segment" onClick={translations[s.segment] ? undefined : translate}>{translations[s.segment] ? translations[s.segment].meaning : s.segment}</p>
+                                    </span>
+                                )
+                            })}
                         </div>)
                     })}
                 </div>
-                
+
             }
         </div>
-        
+
     )
 }
 export default Play;

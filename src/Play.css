@@ -1,5 +1,5 @@
 .lyrics{
-    height: 50vh;
+    height: calc(80vh - 360px);
     background-color: aquamarine;
     overflow-y: auto;
     padding: 2rem;
@@ -12,10 +12,12 @@
     flex: 1 0 auto;
 }
 .activeLyric{
-    font-weight: 800;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 1rem;
 }
 #yt-player{
     width: 80%;
+    border-radius: 1rem;
 }
 .lyricTime{
     opacity: 0.5;
@@ -25,5 +27,19 @@
 .lyric{
     display: flex;
     align-items: center;
-    margin-top: -1rem;
+}
+.segment{
+    text-decoration: underline;
+    margin-right: 0.1rem;
+    cursor: pointer;
+}
+.furigana{
+    font-size: 70%;
+}
+.segmentContainer{
+    display: grid;
+    grid-template-areas: "overlay";
+}
+.segmentContainer *{
+    grid-area: overlay;
 }
