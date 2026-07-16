@@ -14,6 +14,7 @@ const Play = () => {
     const [ready, setReady] = useState(false);
     const [currentLyricI, setCurrentLyricI] = useState(0);
     const [translations, setTranslations] = useState({});
+    const [lyricsI, setLyricsI] = useState(0);
     const [tokeniser, setTokeniser] = useState(null);
     useEffect(() => {
         if (!window.YT) {
@@ -92,7 +93,7 @@ const Play = () => {
             if (!strictLyricData) return null;
             if (strictLyricData.length == 0 && !lyricData) return null;
             const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
-            const synced = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))[0]
+            const synced = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))[lyricsI]
             if (!synced) return null;
             const lines = synced.syncedLyrics.split("\n").filter(l => l.length > 0 && /^\d$/.test(l[1]));
             console.table(lines)
@@ -157,9 +158,9 @@ const Play = () => {
         const initTokeniser = async () => {
             const myLoader = {
                 async loadArrayBuffer(url) {
-                    // url = url.replace('.gz', '')
+                    url = url.replace('.gz', '')
                     const res = await fetch(
-                        '/dict/' + url, 
+                        'https://cdn.jsdelivr.net/npm/@aiktb/kuromoji@1.0.2/dict/' + url, //if tokeniser stops working try downloading .dat.gz
                     )
                     if (!res.ok) {
                         throw new Error(`Failed to fetch ${url}, status: ${res.status}`)
@@ -198,7 +199,7 @@ const Play = () => {
                                 )
                             })}
                         </div>)
-                    }): !strictLyricLoading && !lyricLoading && lyricData && <h1>Japanese lyrics not found.</h1>}
+                    }): !strictLyricLoading && ! lyricLoading && lyricData && <h1>Japanese lyrics not found.</h1>}
                 </div>
             }
             <div className="vocabularyTable">
