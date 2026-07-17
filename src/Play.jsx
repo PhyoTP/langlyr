@@ -10,6 +10,7 @@ const Play = () => {
     const { type, id } = useParams();
     const playerRef = useRef(null);
     const lyricRefs = useRef([]);
+    const lyricsCRef = useRef(null);
     const [currentTitle, setCurrentTitle] = useState("");
     const [ready, setReady] = useState(false);
     const [currentLyricI, setCurrentLyricI] = useState(0);
@@ -127,16 +128,35 @@ const Play = () => {
         return () => clearInterval(interval);
     }, [lyrics, currentLyricI]);
     useEffect(() => {
-        const element = lyricRefs.current[currentLyricI];
-        if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "end", });
+        if (!lyricsCRef) return;
+        if (lyricRefs.current.length > 1) {
+            const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                lyricsCRef.current.scrollTop = lyricsCRef.current.scrollHeight;
+                }
+            },
+            {
+                root: lyricsCRef.current,
+                threshold: 1 // last element fully visible
+            }
+            );
+            observer.observe(lyricRefs.current[currentLyricI-1]);
+            return () => observer.disconnect();
         }
     }, [currentLyricI])
     const segment = useCallback((str) => {
         if (tokeniser){
             const tokens = tokeniser.tokenize(str)
             return tokens.map(t => {
-                return {segment: t.surface_form, base: t.basic_form}
+                return {
+                    segment: t.surface_form, 
+                    base: t.basic_form, 
+                    pos: t.pos, 
+                    pos1: t.pos_detail_1 != "*" && t.pos_detail_1,
+                    pos2: t.pos_detail_2 != "*" && t.pos_detail_2,
+                    pos3: t.pos_detail_3 != "*" && t.pos_detail_3,
+                }
             })
         }else{
             const segmenterJa = new Intl.Segmenter("ja-JP", { granularity: "word" });
@@ -196,7 +216,7 @@ const Play = () => {
         <div className="main">
             <div id="yt-player" />
             {ready &&
-                <div className="lyrics">
+                <div className="lyrics" ref={lyricsCRef}>
                     {!tokeniser && <p style={{position: "absolute"}}>Loading tokeniser...</p>}
                     {strictLyricLoading && <h1>Loading lyrics...</h1>}
                     {lyricLoading && <h1>Still loading lyrics...</h1>}
@@ -206,12 +226,20 @@ const Play = () => {
                             ref={el => lyricRefs.current[i] = el}
                             className={`${i === currentLyricI ? "activeLyric " : ""}lyric`}
                         >
-                            <button className="lyricTime" onClick={()=>{playerRef.current?.seekTo(convertTime(lyrics[0][i]), true)}}>{lyrics[0][i]}</button> {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s) => {
-                                const isEnglish = translations[s.base] || !japaneseRegex.test(s.segment)
+                            <button className="lyricTime" onClick={()=>{playerRef.current?.seekTo(convertTime(lyrics[0][i]), true)}}>{lyrics[0][i]}</button> 
+                            {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s) => {
+                                const grammar = [["助詞", "助動詞", "記号", "フィラー"],["非自立"]]
+                                const noTransl = translations[s.base] || !japaneseRegex.test(s.segment) || (s.pos && grammar[0].includes(s.pos)) || (s.pos1 && grammar[1].includes(s.pos1))
                                 return (
                                     <span className="segmentContainer">
                                         <p className="furigana">{translations[s.base] ? translations[s.base].hiragana : ""}</p>
-                                        <p className={`segment ${isEnglish ? "" : "japanese"}`} onClick={isEnglish ? undefined : () => translate(s.base)} title={s.base}>{translations[s.base] ? translations[s.base].meaning : s.segment}</p>
+                                        <p 
+                                            className={`segment ${noTransl ? "" : "japanese"}`} 
+                                            onClick={noTransl ? undefined : () => translate(s.base)} 
+                                            title={s.base}
+                                        >
+                                            {translations[s.base] ? translations[s.base].meaning : s.segment}
+                                        </p>
                                     </span>
                                 )
                             })}
@@ -235,7 +263,7 @@ const Play = () => {
                             <td>{translations[k].hiragana}</td>
                             <td>{translations[k].meaning}</td>
                             <td>{translations[k].song}</td>
-                            <td>{translations[k].sentences[0].join("|")}</td>
+                            <td>{translations[k].sentences[0].map(t=><button>{t}</button>)}</td>
                         </tr>
                     })}
                 </table>
