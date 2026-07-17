@@ -4,7 +4,15 @@ import "./Play.css";
 import useSWR from "swr";
 import * as kuromoji from '@patdx/kuromoji'
 
-const fetcher = (...args) => fetch(...args).then((res) => res.json());
+const fetcher = async (url) => {
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
+
+  return res.json();
+};
 const japaneseRegex = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const Play = () => {
     const { type, id } = useParams();
@@ -87,7 +95,7 @@ const Play = () => {
         const pattern = artist.split("").join("\\s*");
         return new RegExp(pattern, "i");
     }
-    const { data: strictLyricData, isLoading: strictLyricLoading } = useSWR(currentTitle !== "" ? `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist.trim())}&track_name=${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher)
+    const { data: strictLyricData, isLoading: strictLyricLoading, error: lrcLibError } = useSWR(currentTitle !== "" ? `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist.trim())}&track_name=${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher)
     const { data: lyricData, isLoading: lyricLoading } = useSWR(strictLyricData && !strictLyricData.some(l => l.syncedLyrics) ? `https://lrclib.net/api/search?q=${encodeURIComponent(artist.trim())} ${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher);
     const lyrics = useMemo(() => {
         if (ready) {
@@ -245,6 +253,7 @@ const Play = () => {
                             })}
                         </div>)
                     }): !strictLyricLoading && ! lyricLoading && lyricData && <h1>Japanese lyrics not found.</h1>}
+                    {lrcLibError && <h1>Error: {lrcLibError}</h1>}
                 </div>
             }
             <div className="vocabularyTable">
