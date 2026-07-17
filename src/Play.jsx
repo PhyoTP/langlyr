@@ -104,6 +104,10 @@ const Play = () => {
             return null;
         }
     }, [strictLyricData, lyricData, ready])
+    const convertTime = (timestamp) =>{
+        const [m, s] = timestamp.split(":").map(Number);
+        return m * 60 + s
+    }
     useEffect(() => {
         if (!lyrics) return;
 
@@ -111,10 +115,7 @@ const Play = () => {
             const currentTime = playerRef.current?.getCurrentTime?.();
             if (currentTime == null) return;
 
-            const index = lyrics[0].findIndex(time => {
-                const [m, s] = time.split(":").map(Number);
-                return m * 60 + s > currentTime;
-            }) - 1;
+            const index = lyrics[0].findIndex(ts => convertTime(ts) > currentTime) - 1;
 
             if (index !== currentLyricI) {
                 setCurrentLyricI(index);
@@ -148,9 +149,25 @@ const Play = () => {
     const translate = async (word) => {
         const response = await fetch('https://api.langlyr.phyotp.dev/jisho?keyword=' + encodeURIComponent(word));
         const data = await response.json();
-        const words = data?.data;
+        let words = data?.data;
         if (words && words.length > 0) {
-            setTranslations(prev => ({...prev, [word]: {"meaning":words[0].senses[0].english_definitions[0],"hiragana": words[0].japanese[0].reading, "song": currentTitle, "sentences": [lyrics[0].filter((_,index) => lyrics[1][index].includes(word)), lyrics[1].filter((l) => l.includes(word))]}}))
+            const chosenResults = (()=>{
+                const wordVariations = words.flatMap((inner, index) =>
+                    inner.japanese.map(element => ({
+                        index,
+                        element
+                    }))
+                );
+                const matchingVariations = [...new Set(wordVariations.filter(v=>v.element==word).map(v=>v.index))]
+                if (matchingVariations.length === 1){
+                    return words[0]
+                }
+                if (matchingVariations.length > 1){
+                    words.filter((_,i)=>matchingVariations.includes(i))
+                }
+            })()
+
+            setTranslations(prev => ({...prev, [word]: {meaning:words[0].senses[0].english_definitions[0],hiragana: words[0].japanese[0].reading, song: currentTitle, sentences: [lyrics[0].filter((_,index) => lyrics[1][index].includes(word)), lyrics[1].filter((l) => l.includes(word))]}}))
         }
     }
     useEffect(()=>{
@@ -189,7 +206,7 @@ const Play = () => {
                             ref={el => lyricRefs.current[i] = el}
                             className={`${i === currentLyricI ? "activeLyric " : ""}lyric`}
                         >
-                            <p className="lyricTime">{lyrics[0][i]}</p> {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s) => {
+                            <button className="lyricTime" onClick={()=>{playerRef.current?.seekTo(convertTime(lyrics[0][i]), true)}}>{lyrics[0][i]}</button> {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s) => {
                                 const isEnglish = translations[s.base] || !japaneseRegex.test(s.segment)
                                 return (
                                     <span className="segmentContainer">
