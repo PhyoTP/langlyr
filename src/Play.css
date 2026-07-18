@@ -35,24 +35,32 @@
     align-items: center;
     border-radius: 1rem;
     transition: all 1s;
+    margin: 0.1rem;
 }
-.segment{
-    margin-right: 0.1rem;
-}
+
 .japanese{
     text-decoration: underline;
     cursor: pointer;
 }
-.furigana{
+.furigana,
+.kanji {
     font-size: 70%;
+    line-height: 1;
 }
 .segmentContainer{
     display: grid;
-    grid-template-areas: "overlay";
+    grid-template-rows: 1fr auto 1fr;
+    justify-items: center;
+    margin-top: 0.5rem;
 }
 .segmentContainer *{
-    grid-area: overlay;
+    margin: 0;
 }
+.segment {
+    line-height: 1;
+    margin-right: 0.1rem;
+}
+
 .vocabularyTable{
     background-color: skyblue;
     padding: 2rem;

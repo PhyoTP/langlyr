@@ -5,13 +5,13 @@ import useSWR from "swr";
 import * as kuromoji from '@patdx/kuromoji'
 
 const fetcher = async (url) => {
-  const res = await fetch(url);
+    const res = await fetch(url);
 
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`);
-  }
+    if (!res.ok) {
+        throw new Error(`${res.status} ${res.statusText}`);
+    }
 
-  return res.json();
+    return res.json();
 };
 const japaneseRegex = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const Play = () => {
@@ -113,7 +113,7 @@ const Play = () => {
             return null;
         }
     }, [strictLyricData, lyricData, ready])
-    const convertTime = (timestamp) =>{
+    const convertTime = (timestamp) => {
         const [m, s] = timestamp.split(":").map(Number);
         return m * 60 + s
     }
@@ -136,69 +136,83 @@ const Play = () => {
         return () => clearInterval(interval);
     }, [lyrics, currentLyricI]);
     useEffect(() => {
-        if (!lyricsCRef) return;
-        if (lyricRefs.current.length > 1) {
+        if (!lyricsCRef.current) return;
+        if (lyricRefs.current.length > Math.max(currentLyricI, 1) && currentLyricI > 0) {
             const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                lyricsCRef.current.scrollTop = lyricsCRef.current.scrollHeight;
+                ([entry]) => {
+                    if (entry.isIntersecting) {
+                        lyricsCRef.current.scrollTop = lyricsCRef.current.scrollHeight;
+                    }
+                },
+                {
+                    root: lyricsCRef.current,
+                    threshold: 1 // last element fully visible
                 }
-            },
-            {
-                root: lyricsCRef.current,
-                threshold: 1 // last element fully visible
-            }
             );
-            observer.observe(lyricRefs.current[currentLyricI-1]);
+            observer.observe(lyricRefs.current[currentLyricI - 1]);
             return () => observer.disconnect();
         }
     }, [currentLyricI])
     const segment = useCallback((str) => {
-        if (tokeniser){
+        if (tokeniser) {
             const tokens = tokeniser.tokenize(str)
             return tokens.map(t => {
                 return {
-                    segment: t.surface_form, 
-                    base: t.basic_form, 
-                    pos: t.pos, 
+                    segment: t.surface_form,
+                    base: t.basic_form,
+                    pos: t.pos,
                     pos1: t.pos_detail_1 != "*" && t.pos_detail_1,
                     pos2: t.pos_detail_2 != "*" && t.pos_detail_2,
                     pos3: t.pos_detail_3 != "*" && t.pos_detail_3,
                 }
             })
-        }else{
+        } else {
             const segmenterJa = new Intl.Segmenter("ja-JP", { granularity: "word" });
             const segments = segmenterJa.segment(str);
             return Array.from(segments).map(s => {
-                return {segment: s.segment, base: s.segment}
+                return { segment: s.segment, base: s.segment }
             });
         }
     }, [tokeniser])
-    const translate = async (word) => {
+    const translate = async (s) => {
+        const word = s.base
         const response = await fetch('https://api.langlyr.phyotp.dev/jisho?keyword=' + encodeURIComponent(word));
         const data = await response.json();
         let words = data?.data;
         if (words && words.length > 0) {
-            const chosenResults = (()=>{
+            const chosenResults = (() => {
                 const wordVariations = words.flatMap((inner, index) =>
                     inner.japanese.map(element => ({
                         index,
                         element
                     }))
                 );
-                const matchingVariations = [...new Set(wordVariations.filter(v=>v.element==word).map(v=>v.index))]
-                if (matchingVariations.length === 1){
+                const matchingVariations = [...new Set(wordVariations.filter(v => v.element == word).map(v => v.index))]
+                if (matchingVariations.length === 1) {
                     return words[0]
                 }
-                if (matchingVariations.length > 1){
-                    words.filter((_,i)=>matchingVariations.includes(i))
+                if (matchingVariations.length > 1) {
+                    words.filter((_, i) => matchingVariations.includes(i))
                 }
             })()
 
-            setTranslations(prev => ({...prev, [word]: {meaning:words[0].senses[0].english_definitions[0],hiragana: words[0].japanese[0].reading, song: currentTitle, sentences: [lyrics[0].filter((_,index) => lyrics[1][index].includes(word)), lyrics[1].filter((l) => l.includes(word))]}}))
+            setTranslations(prev => ({
+                ...prev,
+                [currentTitle]: {
+                    ...(prev[currentTitle] ?? {}),
+                    [word]: {
+                        meaning: words[0].senses[0].english_definitions[0],
+                        hiragana: words[0].japanese[0].reading,
+                        sentences: [
+                            lyrics[0].filter((_, index) => lyrics[1][index].includes(s.segment)),
+                            lyrics[1].filter(l => l.includes(s.segment))
+                        ]
+                    }
+                }
+            }));
         }
     }
-    useEffect(()=>{
+    useEffect(() => {
         if (!ready || tokeniser) return;
         const initTokeniser = async () => {
             const myLoader = {
@@ -219,13 +233,13 @@ const Play = () => {
             setTokeniser(tokenizer)
         }
         initTokeniser()
-    },[ready])
+    }, [ready])
     return (
         <div className="main">
             <div id="yt-player" />
             {ready &&
                 <div className="lyrics" ref={lyricsCRef}>
-                    {!tokeniser && <p style={{position: "absolute"}}>Loading tokeniser...</p>}
+                    {!tokeniser && <p style={{ position: "absolute" }}>Loading tokeniser...</p>}
                     {strictLyricLoading && <h1>Loading lyrics...</h1>}
                     {lyricLoading && <h1>Still loading lyrics...</h1>}
                     {lyrics ? lyrics[1].slice(0, currentLyricI + 1).map((lyric, i) => {
@@ -234,46 +248,109 @@ const Play = () => {
                             ref={el => lyricRefs.current[i] = el}
                             className={`${i === currentLyricI ? "activeLyric " : ""}lyric`}
                         >
-                            <button className="lyricTime" onClick={()=>{playerRef.current?.seekTo(convertTime(lyrics[0][i]), true)}}>{lyrics[0][i]}</button> 
-                            {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s) => {
-                                const grammar = [["助詞", "助動詞", "記号", "フィラー"],["非自立"]]
-                                const noTransl = translations[s.base] || !japaneseRegex.test(s.segment) || (s.pos && grammar[0].includes(s.pos)) || (s.pos1 && grammar[1].includes(s.pos1))
+                            <button className="lyricTime" onClick={() =>
+                                playerRef.current?.seekTo(convertTime(lyrics[0][i]), true)
+                            }>{lyrics[0][i]}</button>
+                            {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s, i) => {
+                                const grammar = [["助詞", "助動詞", "記号", "フィラー"], ["非自立"]]
+                                const noTransl = translations[currentTitle]?.[s.base] || !japaneseRegex.test(s.segment) || (s.pos && grammar[0].includes(s.pos)) || (s.pos1 && grammar[1].includes(s.pos1))
                                 return (
-                                    <span className="segmentContainer">
-                                        <p className="furigana">{translations[s.base] ? translations[s.base].hiragana : ""}</p>
-                                        <p 
-                                            className={`segment ${noTransl ? "" : "japanese"}`} 
-                                            onClick={noTransl ? undefined : () => translate(s.base)} 
+                                    <span className="segmentContainer" key={i}>
+                                        <p className="furigana">{translations[currentTitle]?.[s.base] ? translations[currentTitle][s.base].hiragana : ""}</p>
+                                        <p
+                                            className={`segment${noTransl ? "" : " japanese"}`}
+                                            onClick={noTransl ? undefined : () => translate(s)}
                                             title={s.base}
                                         >
-                                            {translations[s.base] ? translations[s.base].meaning : s.segment}
+                                            {translations[currentTitle]?.[s.base] ? translations[currentTitle][s.base].meaning : s.segment}
                                         </p>
+                                        <p className="kanji">{translations[currentTitle]?.[s.base] && (translations[currentTitle][s.base].hiragana != s.segment) ? s.segment : ""}</p>
                                     </span>
                                 )
                             })}
                         </div>)
-                    }): !strictLyricLoading && ! lyricLoading && lyricData && <h1>Japanese lyrics not found.</h1>}
+                    }) : !strictLyricLoading && !lyricLoading && lyricData && <h1>Japanese lyrics not found.</h1>}
                     {lrcLibError && <h1>LRCLib error: {lrcLibError.message}</h1>}
                 </div>
             }
             <div className="vocabularyTable">
                 <h1>Vocabulary</h1>
                 <table>
-                    <tr>
-                        <th>Word</th>
-                        <th>Hiragana</th>
-                        <th>Meaning</th>
-                        <th>Song</th>
-                        <th>Sentence</th>
-                    </tr>
-                    {Object.keys(translations).map(k => {
-                        return <tr key={k}>
-                            <td>{k}</td>
-                            <td>{translations[k].hiragana}</td>
-                            <td>{translations[k].meaning}</td>
-                            <td>{translations[k].song}</td>
-                            <td>{translations[k].sentences[0].map(t=><button>{t}</button>)}</td>
-                        </tr>
+                    {translations[currentTitle] && Object.keys(translations[currentTitle]).length > 0 &&<>
+                        <thead>
+                            <h1>{currentTitle}</h1>
+                            <tr>
+                                <th>Word</th>
+                                <th>Hiragana</th>
+                                <th>Meaning</th>
+                                <th>Sentences</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.keys(translations[currentTitle]).map(k => {
+                                return <tr key={k}>
+                                    <td>{k}</td>
+                                    <td>{translations[currentTitle][k].hiragana}</td>
+                                    <td>{translations[currentTitle][k].meaning}</td>
+                                    <td>{translations[currentTitle][k].sentences[0].map(t => 
+                                        <button onClick={() =>
+                                            playerRef.current?.seekTo(convertTime(t), true)
+                                        }>{t}</button>
+                                    )}</td>
+                                    <button
+                                        onClick={() => {
+                                            setTranslations(prev => {
+                                                const { [k]: _, ...newSongTranslations } = prev[currentTitle];
+                                                return {
+                                                    ...prev,
+                                                    [currentTitle]: newSongTranslations,
+                                                };
+                                            });
+                                        }}
+                                    >
+                                        Delete
+                                    </button>
+                                </tr>
+                            })}
+                        </tbody>
+                    </>}
+                    {Object.keys(translations).filter(t=>t!=currentTitle && Object.keys(translations[t]).length > 0).map(song => {
+                        return <>
+                            <thead>
+                                <h1>{song}</h1>
+                                <tr>
+                                    <th>Word</th>
+                                    <th>Hiragana</th>
+                                    <th>Meaning</th>
+                                    <th>Sentences</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.keys(translations[song]).map(k => {
+                                    return <tr key={k}>
+                                        <td>{k}</td>
+                                        <td>{translations[song][k].hiragana}</td>
+                                        <td>{translations[song][k].meaning}</td>
+                                        <td>{translations[song][k].sentences[1].map(s => 
+                                            <p>{s}</p>
+                                        )}</td>
+                                        <button
+                                            onClick={() => {
+                                                setTranslations(prev => {
+                                                    const { [k]: _, ...newSongTranslations } = prev[song];
+                                                    return {
+                                                        ...prev,
+                                                        [song]: newSongTranslations,
+                                                    };
+                                                });
+                                            }}
+                                        >
+                                            Delete
+                                        </button>
+                                    </tr>
+                                })}
+                            </tbody>
+                        </>
                     })}
                 </table>
             </div>
