@@ -25,6 +25,7 @@ const Play = () => {
     const [translations, setTranslations] = useState({});
     const [lyricsI, setLyricsI] = useState(0);
     const [tokeniser, setTokeniser] = useState(null);
+    const [syncedCount, setSyncedC] = useState(0);
     useEffect(() => {
         if (!window.YT) {
             const tag = document.createElement('script');
@@ -102,9 +103,11 @@ const Play = () => {
             if (!strictLyricData) return null;
             if (strictLyricData.length == 0 && !lyricData) return null;
             const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
-            const synced = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))[lyricsI]
-            if (!synced) return null;
-            const lines = synced.syncedLyrics.split("\n").filter(l => l.length > 0 && /^\d$/.test(l[1]));
+            const synced = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))
+            if (synced.length === 0) return null;
+            setSyncedC(synced.length);
+            const chosen = synced[lyricsI%synced.length]
+            const lines = chosen.syncedLyrics.split("\n").filter(l => l.length > 0 && /^\d$/.test(l[1]));
             console.table(lines)
             const times = lines.map(line => line.split("]")[0].slice(1));
             const verses = lines.map(line => line.split("]")[1]?.trim());
@@ -112,7 +115,10 @@ const Play = () => {
         } else {
             return null;
         }
-    }, [strictLyricData, lyricData, ready])
+    }, [strictLyricData, lyricData, ready, lyricsI])
+    useEffect(()=>{
+        setLyricsI(0)
+    },[currentTitle])
     const convertTime = (timestamp) => {
         const [m, s] = timestamp.split(":").map(Number);
         return m * 60 + s
@@ -195,7 +201,6 @@ const Play = () => {
                     words.filter((_, i) => matchingVariations.includes(i))
                 }
             })()
-
             setTranslations(prev => ({
                 ...prev,
                 [currentTitle]: {
@@ -204,8 +209,8 @@ const Play = () => {
                         meaning: words[0].senses[0].english_definitions[0],
                         hiragana: words[0].japanese[0].reading,
                         sentences: [
-                            lyrics[0].filter((_, index) => lyrics[1][index].includes(s.segment)),
-                            lyrics[1].filter(l => l.includes(s.segment))
+                            lyrics[0].filter((_, index) => segment(lyrics[1][index]).some(w=>w.base == s.base)),
+                            lyrics[1].filter(l => segment(l).some(w=>w.base == s.base))
                         ]
                     }
                 }
@@ -272,6 +277,9 @@ const Play = () => {
                     }) : !strictLyricLoading && !lyricLoading && lyricData && <h1>Japanese lyrics not found.</h1>}
                     {lrcLibError && <h1>LRCLib error: {lrcLibError.message}</h1>}
                 </div>
+            }
+            {syncedCount > 0 && 
+                <caption>Lyrics #{lyricsI+1}, <button className="inline-button" onClick={() => setLyricsI(i=>(i+1)%syncedCount)}>next option</button></caption>
             }
             <div className="vocabularyTable">
                 <h1>Vocabulary</h1>

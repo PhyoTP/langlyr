@@ -69,3 +69,16 @@
     display: flex;
     flex-direction: column;
 }
+
+.inline-button{
+    border: none;
+    background: none;
+    text-decoration: underline;
+    font-size: 100%;
+    cursor: pointer;
+}
+caption {
+    width: calc(80% - 4rem);
+    text-align: left;
+    font-size: 80%;
+}
