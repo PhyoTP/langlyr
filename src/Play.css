@@ -82,3 +82,6 @@ caption {
     text-align: left;
     font-size: 80%;
 }
+td a{
+    color: black;
+}

@@ -1,7 +1,8 @@
 .mainField{
   padding: 0.5rem;
   border-radius: 0.5rem;
-  width: 100%;
+  width: 80%;
+  box-shadow: 0 1.5rem 0.5rem aquamarine, 0 3rem 0.5rem aquamarine, 0 4.5rem 1rem aquamarine;
 }
 
 .mainSubmit{
@@ -12,4 +13,26 @@
     background-color: rgba(255, 0, 0, 0.2);
     border-left: 0.3rem solid red;
     padding: 0.5rem;
+}
+.options *{
+  border: none;
+  border-radius: 0.5rem;
+  background-color: aqua;
+  aspect-ratio: 1;
+  height: 10rem;
+  box-shadow: 0.5rem 0.5rem 0.5rem aquamarine;
+  transition: all 0.5s;
+}
+.options *:hover{
+  box-shadow: -0.5rem 0.5rem 0.5rem aquamarine;
+}
+.options{
+  display: flex;
+  gap: 2rem;
+}
+.title{
+  color: navy;
+  font-size: 4rem;
+  -webkit-text-stroke: 0.5rem aquamarine;
+  paint-order: stroke fill; 
 }

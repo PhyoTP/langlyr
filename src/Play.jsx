@@ -104,8 +104,8 @@ const Play = () => {
             if (strictLyricData.length == 0 && !lyricData) return null;
             const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
             const synced = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))
-            if (synced.length === 0) return null;
             setSyncedC(synced.length);
+            if (synced.length === 0) return null;
             const chosen = synced[lyricsI%synced.length]
             const lines = chosen.syncedLyrics.split("\n").filter(l => l.length > 0 && /^\d$/.test(l[1]));
             console.table(lines)
@@ -186,21 +186,28 @@ const Play = () => {
         const data = await response.json();
         let words = data?.data;
         if (words && words.length > 0) {
-            const chosenResults = (() => {
-                const wordVariations = words.flatMap((inner, index) =>
-                    inner.japanese.map(element => ({
-                        index,
-                        element
-                    }))
-                );
-                const matchingVariations = [...new Set(wordVariations.filter(v => v.element == word).map(v => v.index))]
-                if (matchingVariations.length === 1) {
-                    return words[0]
-                }
-                if (matchingVariations.length > 1) {
-                    words.filter((_, i) => matchingVariations.includes(i))
-                }
-            })()
+            let chosenResults = []
+            const wordVariations = words.flatMap((inner, index) =>
+                inner.japanese.map(element => ({
+                    index,
+                    element
+                }))
+            );
+            const matchingVariations = [...new Set(wordVariations.filter(v => (v.element.word || v.element.reading) == word).map(v => v.index))]
+            if (matchingVariations.length === 1) {
+                chosenResults = [words[0]]
+            }else if (matchingVariations.length > 1) {
+                chosenResults = words.filter((_, i) => matchingVariations.includes(i))
+            }else{
+                chosenResults = words
+            }
+            const posMappings = [
+                {},
+                {},
+                {},
+                {}
+            ]
+            
             setTranslations(prev => ({
                 ...prev,
                 [currentTitle]: {
@@ -261,7 +268,7 @@ const Play = () => {
                                 const noTransl = translations[currentTitle]?.[s.base] || !japaneseRegex.test(s.segment) || (s.pos && grammar[0].includes(s.pos)) || (s.pos1 && grammar[1].includes(s.pos1))
                                 return (
                                     <span className="segmentContainer" key={i}>
-                                        <p className="furigana">{translations[currentTitle]?.[s.base] ? translations[currentTitle][s.base].hiragana : ""}</p>
+                                        <p className="furigana">{translations[currentTitle]?.[s.base] ? translations[currentTitle][s.base].hiragana : /*s.pos3 ||*/ ""}</p>
                                         <p
                                             className={`segment${noTransl ? "" : " japanese"}`}
                                             onClick={noTransl ? undefined : () => translate(s)}
@@ -297,7 +304,7 @@ const Play = () => {
                         <tbody>
                             {Object.keys(translations[currentTitle]).map(k => {
                                 return <tr key={k}>
-                                    <td>{k}</td>
+                                    <td><a href={`https://jisho.org/search/${k}`}>{k}</a></td>
                                     <td>{translations[currentTitle][k].hiragana}</td>
                                     <td>{translations[currentTitle][k].meaning}</td>
                                     <td>{translations[currentTitle][k].sentences[0].map(t => 
@@ -336,7 +343,7 @@ const Play = () => {
                             <tbody>
                                 {Object.keys(translations[song]).map(k => {
                                     return <tr key={k}>
-                                        <td>{k}</td>
+                                        <td><a href={`https://jisho.org/search/${k}`}>{k}</a></td>
                                         <td>{translations[song][k].hiragana}</td>
                                         <td>{translations[song][k].meaning}</td>
                                         <td>{translations[song][k].sentences[1].map(s => 
