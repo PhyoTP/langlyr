@@ -9,3 +9,10 @@ html *{
     gap: 0.5rem;
     align-items: center;
 }
+html, body {
+  margin: 0;
+  padding: 0;
+}
+body{
+  background-image: url("patterntransp.svg");
+}

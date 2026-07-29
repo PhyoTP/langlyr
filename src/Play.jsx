@@ -268,7 +268,7 @@ const Play = () => {
                                 const noTransl = translations[currentTitle]?.[s.base] || !japaneseRegex.test(s.segment) || (s.pos && grammar[0].includes(s.pos)) || (s.pos1 && grammar[1].includes(s.pos1))
                                 return (
                                     <span className="segmentContainer" key={i}>
-                                        <p className="furigana">{translations[currentTitle]?.[s.base] ? translations[currentTitle][s.base].hiragana : /*s.pos3 ||*/ ""}</p>
+                                        <p className="furigana">{translations[currentTitle]?.[s.base] ? translations[currentTitle][s.base].hiragana : /*s.pos1 ||*/ ""}</p>
                                         <p
                                             className={`segment${noTransl ? "" : " japanese"}`}
                                             onClick={noTransl ? undefined : () => translate(s)}

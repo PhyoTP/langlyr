@@ -1,38 +1,100 @@
 .mainField{
   padding: 0.5rem;
   border-radius: 0.5rem;
-  width: 80%;
-  box-shadow: 0 1.5rem 0.5rem aquamarine, 0 3rem 0.5rem aquamarine, 0 4.5rem 1rem aquamarine;
+  width: 90%;
+  font-size: large;
 }
 
 .mainSubmit{
-    background-color: aqua;
-    padding: 0.5em;
+  background-color: aqua;
+  padding: 0.5em;
+  border: none;
+  position: relative;
+  box-shadow: 0.2rem -0.2rem 0 navy;
+  top: 0.2rem;
+  right: 0.2rem;
+  transition: all 0.5s;
+  border-radius: 0.2rem;
+}
+.mainSubmit:hover{
+  box-shadow: 0 0 0 0.2rem white;
+  top: 0;
+  right: 0;
 }
 .error{
     background-color: rgba(255, 0, 0, 0.2);
     border-left: 0.3rem solid red;
     padding: 0.5rem;
 }
-.options *{
+.options button{
   border: none;
   border-radius: 0.5rem;
   background-color: aqua;
   aspect-ratio: 1;
   height: 10rem;
-  box-shadow: 0.5rem 0.5rem 0.5rem aquamarine;
+  box-shadow: 0.5rem -0.5rem 0 navy;
+  position: relative;
+  bottom: 0;
   transition: all 0.5s;
+  padding: 0;
+  overflow: hidden;
 }
-.options *:hover{
-  box-shadow: -0.5rem 0.5rem 0.5rem aquamarine;
+.options button:hover{
+  box-shadow: 0.5rem 0.5rem 0 aqua;
+  bottom: 0.5rem;
 }
 .options{
   display: flex;
+  justify-content: space-around;
   gap: 2rem;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.options img{
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  filter: brightness(50%);
+}
+.options p{
+  position: absolute;
+  top: calc(50% - 3rem);
+  width: 100%;
+  z-index: 10;
+  color: white;
+  font-size: 200%;
 }
 .title{
   color: navy;
   font-size: 4rem;
-  -webkit-text-stroke: 0.5rem aquamarine;
-  paint-order: stroke fill; 
+  margin: 0;
+}
+.intro{
+  width: 100vw;
+  text-align: center;
+  height: 40vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-image: url("assets/pattern.svg");
+  background-repeat: repeat;
+}
+main .main{
+  position: relative;
+  bottom: calc((40vh - 6rem) / 2);
+  border-radius: calc(0.5rem + 16px);
+  width: 80%;
+  background: aquamarine;
+  padding: 2rem;
+  background-position-y: 20%;
+  background-position-x: 1vw;
+}
+main{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+h2{
+  text-decoration: underline wavy navy 1.5px;
 }
