@@ -70,12 +70,13 @@
     flex-direction: column;
 }
 
-.inline-button{
+.chevron-button{
     border: none;
     background: none;
-    text-decoration: underline;
-    font-size: 100%;
+    font-size: 200%;
     cursor: pointer;
+    position: relative;
+    top: 0.5rem;
 }
 caption {
     width: calc(80% - 4rem);

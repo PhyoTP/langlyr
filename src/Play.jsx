@@ -3,6 +3,7 @@ import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import "./Play.css";
 import useSWR from "swr";
 import * as kuromoji from '@patdx/kuromoji'
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 const fetcher = async (url) => {
     const res = await fetch(url);
@@ -18,14 +19,14 @@ const Play = () => {
     const { type, id } = useParams();
     const playerRef = useRef(null);
     const lyricRefs = useRef([]);
-    const lyricsCRef = useRef(null);
+    const lyricsContainer = useRef(null);
     const [currentTitle, setCurrentTitle] = useState("");
     const [ready, setReady] = useState(false);
     const [currentLyricI, setCurrentLyricI] = useState(0);
     const [translations, setTranslations] = useState({});
     const [lyricsI, setLyricsI] = useState(0);
     const [tokeniser, setTokeniser] = useState(null);
-    const [syncedCount, setSyncedC] = useState(0);
+    const [lyricsCount, setLyricsC] = useState(0);
     useEffect(() => {
         if (!window.YT) {
             const tag = document.createElement('script');
@@ -97,21 +98,31 @@ const Play = () => {
         return new RegExp(pattern, "i");
     }
     const { data: strictLyricData, isLoading: strictLyricLoading, error: lrcLibError } = useSWR(currentTitle !== "" ? `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist.trim())}&track_name=${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher)
-    const { data: lyricData, isLoading: lyricLoading } = useSWR(strictLyricData && !strictLyricData.some(l => l.syncedLyrics) ? `https://lrclib.net/api/search?q=${encodeURIComponent(artist.trim())} ${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher);
+    const { data: lyricData, isLoading: lyricLoading } = useSWR(strictLyricData && strictLyricData.length == 0 ? `https://lrclib.net/api/search?q=${encodeURIComponent(artist.trim())} ${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher);
     const lyrics = useMemo(() => {
         if (ready) {
             if (!strictLyricData) return null;
             if (strictLyricData.length == 0 && !lyricData) return null;
             const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
-            const synced = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))
-            setSyncedC(synced.length);
-            if (synced.length === 0) return null;
-            const chosen = synced[lyricsI%synced.length]
-            const lines = chosen.syncedLyrics.split("\n").filter(l => l.length > 0 && /^\d$/.test(l[1]));
-            console.table(lines)
-            const times = lines.map(line => line.split("]")[0].slice(1));
-            const verses = lines.map(line => line.split("]")[1]?.trim());
-            return [times, verses];
+            const japaneseL = data.filter(l => japaneseRegex.test(l.plainLyrics))
+            if (japaneseL.length === 0) return null;
+            const syncedL = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))
+            if (syncedL.length > 0){
+                setLyricsC(syncedL.length);
+                const chosen = syncedL[lyricsI%syncedL.length]
+                const lines = chosen.syncedLyrics.split("\n").filter(l => l.length > 0 && /^\d$/.test(l[1]));
+                console.table(lines)
+                const times = lines.map(line => line.split("]")[0].slice(1));
+                const verses = lines.map(line => line.split("]")[1]?.trim());
+                return [times, verses];
+            }else{
+                setLyricsC(japaneseL.length)
+                const chosen = japaneseL[lyricsI%japaneseL.length]
+                const lines = chosen.plainLyrics.split("\n").filter(l => l.length > 0);
+                console.table(lines)
+                return [null, lines];
+
+            }
         } else {
             return null;
         }
@@ -125,33 +136,36 @@ const Play = () => {
     }
     useEffect(() => {
         if (!lyrics) return;
+        if (lyrics[0]){
+            const interval = setInterval(() => {
+                const currentTime = playerRef.current?.getCurrentTime?.();
+                if (currentTime == null) return;
 
-        const interval = setInterval(() => {
-            const currentTime = playerRef.current?.getCurrentTime?.();
-            if (currentTime == null) return;
+                const index = lyrics[0].findIndex(ts => convertTime(ts) > currentTime) - 1;
 
-            const index = lyrics[0].findIndex(ts => convertTime(ts) > currentTime) - 1;
+                if (index !== currentLyricI) {
+                    setCurrentLyricI(index);
+                    segment(lyrics[1][index])
+                }
 
-            if (index !== currentLyricI) {
-                setCurrentLyricI(index);
-                segment(lyrics[1][index])
-            }
-
-        }, 100);
-
-        return () => clearInterval(interval);
+            }, 100);
+            
+            return () => clearInterval(interval);
+        }else{
+            setCurrentLyricI(lyrics[1].length-1)
+        }
     }, [lyrics, currentLyricI]);
     useEffect(() => {
-        if (!lyricsCRef.current) return;
+        if (!lyricsContainer.current) return;
         if (lyricRefs.current.length > Math.max(currentLyricI, 1) && currentLyricI > 0) {
             const observer = new IntersectionObserver(
                 ([entry]) => {
                     if (entry.isIntersecting) {
-                        lyricsCRef.current.scrollTop = lyricsCRef.current.scrollHeight;
+                        lyricsContainer.current.scrollTop = lyricsContainer.current.scrollHeight;
                     }
                 },
                 {
-                    root: lyricsCRef.current,
+                    root: lyricsContainer.current,
                     threshold: 1 // last element fully visible
                 }
             );
@@ -236,7 +250,7 @@ const Play = () => {
                         meaning: selected[0].sense.english_definitions[0],
                         hiragana: chosenResults[selected[0].index].japanese.sift(j=>j=>j.reading && j.reading===s.pronunciation || j.reading===kataToHira(s.reading) || j.reading===word)[0].reading,
                         sentences: [
-                            lyrics[0].filter((_, index) => segment(lyrics[1][index]).some(w=>w.base == s.base)),
+                            lyrics[0] ? lyrics[0].filter((_, index) => segment(lyrics[1][index]).some(w=>w.base == s.base)) : null,
                             lyrics[1].filter(l => segment(l).some(w=>w.base == s.base))
                         ]
                     }
@@ -266,11 +280,19 @@ const Play = () => {
         }
         initTokeniser()
     }, [ready])
+    const changeLyricsI = (value) =>{
+        setLyricsI(prev => {
+            let newNum = prev + value;
+            if (newNum < 1) newNum = lyricsCount - 1;
+            if (newNum > lyricsCount) newNum = 0;
+            return newNum;
+        })
+    }
     return (
         <div className="main">
             <div id="yt-player" />
             {ready &&
-                <div className="lyrics" ref={lyricsCRef}>
+                <div className="lyrics" ref={lyricsContainer}>
                     {!tokeniser && <p style={{ position: "absolute" }}>Loading tokeniser...</p>}
                     {strictLyricLoading && <h1>Loading lyrics...</h1>}
                     {lyricLoading && <h1>Still loading lyrics...</h1>}
@@ -278,11 +300,13 @@ const Play = () => {
                         return (<div
                             key={i}
                             ref={el => lyricRefs.current[i] = el}
-                            className={`${i === currentLyricI ? "activeLyric " : ""}lyric`}
+                            className={`${i === currentLyricI && lyrics[0] ? "activeLyric " : ""}lyric`}
                         >
-                            <button className="lyricTime" onClick={() =>
-                                playerRef.current?.seekTo(convertTime(lyrics[0][i]), true)
-                            }>{lyrics[0][i]}</button>
+                            {lyrics[0] &&
+                                <button className="lyricTime" onClick={() => {
+                                    playerRef.current?.seekTo(convertTime(lyrics[0][i]), true)
+                                }}>{lyrics[0][i]}</button>
+                            }
                             {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s, i) => {
                                 const grammar = [["助詞", "助動詞", "記号", "フィラー"], ["非自立"]]
                                 const noTransl = translations[currentTitle]?.[s.base] || !japaneseRegex.test(s.segment) || (s.pos[0] && grammar[0].includes(s.pos[0])) || (s.pos[1] && grammar[1].includes(s.pos[1]))
@@ -301,12 +325,12 @@ const Play = () => {
                                 )
                             })}
                         </div>)
-                    }) : !strictLyricLoading && !lyricLoading && lyricData && <h1>Japanese lyrics not found.</h1>}
+                    }) : !lyrics && !lyricLoading && !strictLyricLoading && <h1>Japanese lyrics not found.</h1>}
                     {lrcLibError && <h1>LRCLib error: {lrcLibError.message}</h1>}
                 </div>
             }
-            {syncedCount > 0 && 
-                <caption>Lyrics #{lyricsI+1}, <button className="inline-button" onClick={() => setLyricsI(i=>(i+1)%syncedCount)}>next option</button></caption>
+            {lyricsCount > 0 && 
+                <caption><button className="chevron-button" onClick={() => changeLyricsI(-1)}><FiChevronLeft /></button>Lyrics #{lyricsI+1}<button className="chevron-button" onClick={() => changeLyricsI(1)}><FiChevronRight /></button></caption>
             }
             <div className="vocabularyTable">
                 <h1>Vocabulary</h1>
@@ -327,11 +351,11 @@ const Play = () => {
                                     <td><a href={`https://jisho.org/search/${k}`}>{k}</a></td>
                                     <td>{translations[currentTitle][k].hiragana}</td>
                                     <td>{translations[currentTitle][k].meaning}</td>
-                                    <td>{translations[currentTitle][k].sentences[0].map(t => 
+                                    <td>{translations[currentTitle][k].sentences[0] ? translations[currentTitle][k].sentences[0].map(t => 
                                         <button onClick={() =>
                                             playerRef.current?.seekTo(convertTime(t), true)
                                         }>{t}</button>
-                                    )}</td>
+                                    ): translations[currentTitle][k].sentences[1].map(s => <p>{s}</p>)}</td>
                                     <button
                                         onClick={() => {
                                             setTranslations(prev => {

@@ -58,7 +58,7 @@ const Start = () => {
             </div>
             <form className="main" onSubmit={submitId}>
                 <input type="text" placeholder="Enter a YouTube video or playlist URL" className="mainField" value={id} onChange={changeId}/>
-                <input type="submit" className="mainSubmit" value="Start learning"/>
+                <input type="submit" className="mainSubmit" value="Learn"/>
                 {error &&(
                     <p className="error">Error: {error}</p>
                 )}

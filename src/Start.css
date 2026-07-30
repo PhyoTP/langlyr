@@ -29,10 +29,10 @@
 .options button{
   border: none;
   border-radius: 0.5rem;
-  background-color: aqua;
+  background-color: navy;
   aspect-ratio: 1;
   height: 10rem;
-  box-shadow: 0.5rem -0.5rem 0 navy;
+  box-shadow: 0.5rem -0.5rem 0 aqua;
   position: relative;
   bottom: 0;
   transition: all 0.5s;
@@ -40,7 +40,7 @@
   overflow: hidden;
 }
 .options button:hover{
-  box-shadow: 0.5rem 0.5rem 0 aqua;
+  box-shadow: 0.5rem 0.5rem 0 white;
   bottom: 0.5rem;
 }
 .options{
