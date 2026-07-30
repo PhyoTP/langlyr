@@ -166,10 +166,14 @@ const Play = () => {
                 return {
                     segment: t.surface_form,
                     base: t.basic_form,
-                    pos: t.pos,
-                    pos1: t.pos_detail_1 != "*" && t.pos_detail_1,
-                    pos2: t.pos_detail_2 != "*" && t.pos_detail_2,
-                    pos3: t.pos_detail_3 != "*" && t.pos_detail_3,
+                    pos: [
+                        t.pos,
+                        t.pos_detail_1,
+                        t.pos_detail_2,
+                        t.pos_detail_3
+                    ].filter(x => x !== "*"),
+                    pronunciation: t.pronunciation,
+                    reading: t.reading
                 }
             })
         } else {
@@ -187,34 +191,50 @@ const Play = () => {
         let words = data?.data;
         if (words && words.length > 0) {
             let chosenResults = []
-            const wordVariations = words.flatMap((inner, index) =>
-                inner.japanese.map(element => ({
-                    index,
-                    element
-                }))
-            );
-            const matchingVariations = [...new Set(wordVariations.filter(v => (v.element.word || v.element.reading) == word).map(v => v.index))]
-            if (matchingVariations.length === 1) {
-                chosenResults = [words[0]]
-            }else if (matchingVariations.length > 1) {
-                chosenResults = words.filter((_, i) => matchingVariations.includes(i))
+            const kanjiRegex = /\p{Script=Han}/u; 
+            function kataToHira(str) {
+                return str.replace(/[\u30A1-\u30F6]/g, ch =>
+                    String.fromCharCode(ch.charCodeAt(0) - 0x60)
+                );
+            }
+            console.log(s)
+            if (kanjiRegex.test(word)){
+                chosenResults = words.sift(w=>w.japanese.some(j=>j.word===word))
             }else{
-                chosenResults = words
+                chosenResults = words.sift(w=>w.japanese.some(j=>j.reading && j.reading===s.pronunciation || j.reading===kataToHira(s.reading) || j.reading===word))
             }
             const posMappings = [
-                {},
-                {},
+                {"名詞": "Noun", "形容詞": "adjective", "接続詞": "Conjunction"},
+                {"接尾": "Suffix"},
                 {},
                 {}
             ]
+
+            const senses = chosenResults.flatMap((result, index) =>
+                result.senses.map(sense => ({
+                    index,
+                    sense
+                }))
+            );
+
+            const selected = senses.sift(({ sense }) => {
+                for (let i = 3; i >= 0; i--) {
+                    if (!s.pos[i]) continue;
+
+                    const mapped = posMappings[i][s.pos[i]];
+                    return mapped && sense.parts_of_speech.some(p => p.includes(mapped));
+                }
+            });
+
             
             setTranslations(prev => ({
                 ...prev,
+                
                 [currentTitle]: {
                     ...(prev[currentTitle] ?? {}),
                     [word]: {
-                        meaning: words[0].senses[0].english_definitions[0],
-                        hiragana: words[0].japanese[0].reading,
+                        meaning: selected[0].sense.english_definitions[0],
+                        hiragana: chosenResults[selected[0].index].japanese.sift(j=>j=>j.reading && j.reading===s.pronunciation || j.reading===kataToHira(s.reading) || j.reading===word)[0].reading,
                         sentences: [
                             lyrics[0].filter((_, index) => segment(lyrics[1][index]).some(w=>w.base == s.base)),
                             lyrics[1].filter(l => segment(l).some(w=>w.base == s.base))
@@ -265,10 +285,10 @@ const Play = () => {
                             }>{lyrics[0][i]}</button>
                             {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s, i) => {
                                 const grammar = [["助詞", "助動詞", "記号", "フィラー"], ["非自立"]]
-                                const noTransl = translations[currentTitle]?.[s.base] || !japaneseRegex.test(s.segment) || (s.pos && grammar[0].includes(s.pos)) || (s.pos1 && grammar[1].includes(s.pos1))
+                                const noTransl = translations[currentTitle]?.[s.base] || !japaneseRegex.test(s.segment) || (s.pos[0] && grammar[0].includes(s.pos[0])) || (s.pos[1] && grammar[1].includes(s.pos[1]))
                                 return (
                                     <span className="segmentContainer" key={i}>
-                                        <p className="furigana">{translations[currentTitle]?.[s.base] ? translations[currentTitle][s.base].hiragana : /*s.pos1 ||*/ ""}</p>
+                                        <p className="furigana">{translations[currentTitle]?.[s.base] ? translations[currentTitle][s.base].hiragana : /*s.pos[0] ||*/ ""}</p>
                                         <p
                                             className={`segment${noTransl ? "" : " japanese"}`}
                                             onClick={noTransl ? undefined : () => translate(s)}
@@ -374,3 +394,8 @@ const Play = () => {
     )
 }
 export default Play;
+Array.prototype.sift = function (callbackFn) {
+    const filtered = this.filter(callbackFn)
+    if (filtered.length == 0) return this
+    return filtered
+}
