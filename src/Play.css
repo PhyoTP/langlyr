@@ -86,3 +86,17 @@ caption {
 td a{
     color: black;
 }
+table {
+  border-collapse: collapse; 
+  width: 100%;
+}
+
+tbody > tr{
+    border-top: 0.1rem solid rgba(0, 0, 0, 0.2);
+}
+td > button{
+    margin: 0.3rem;
+}
+.expand-cell {
+  width: 100%;
+}

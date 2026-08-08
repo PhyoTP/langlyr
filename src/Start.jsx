@@ -48,6 +48,33 @@ const Start = () => {
             name: "Yuuri",
             id: "https://music.youtube.com/playlist?list=OLAK5uy_kaHswT6Xe3pd1QVjTg9sFGlQXHP97TT7U",
             image: "https://images.genius.com/934e3b9781ef7322ca74a09ce4cfcc9e.1000x1000x1.png"
+        },
+        {
+            name: "YENA",
+            id: "https://music.youtube.com/playlist?list=PLO8VRgVh0Buc",
+            image: "https://images.genius.com/c71e9a276b1f7999c13fdf71c7b21936.1000x1000x1.png"
+        },
+        {
+            name: "Miki Matsubara",
+            id: "https://music.youtube.com/playlist?list=OLAK5uy_k-LDChYmgCGbGiCgNBYMser70buv-W_yo",
+            image: "https://images.genius.com/bf314e7661c143fb4d15749842ff157f.980x980x1.png"
+        }
+    ]
+    const playList = [
+        {
+            name: "Japan Hits",
+            id: "https://music.youtube.com/playlist?list=RDCLAK5uy_kDTLUEleq2B4vQB6JB5P1DApC4nRayHUs",
+            image: "https://yt3.googleusercontent.com/vxnc7YxAduPSWAkJKID23Hbm6624TcAhVP6kKY5KUaXdgUuzWoCQwjKKcA-okpyOedwrDr9i5y5zsg=w544-h544-l90-rj"
+        },
+        {
+            name: "J-pop Radio",
+            id: "https://music.youtube.com/playlist?list=RDATgx",
+            image: "https://music.youtube.com/image/radioart?r=CjkKCi9tLzBnZDdmcnQKDS9nLzExZnFiZzF3bW4KDS9nLzExYjdfdmtjN3MKDS9nLzExajB2eWdiYnAQ6AcY6Ac"
+        },
+        {
+            name: "Anime Hits",
+            id: "https://music.youtube.com/playlist?list=RDCLAK5uy_nPxXg1gYFA4ZfQ0ke7N8ONHUPg5Ovr7AU",
+            image: "https://yt3.googleusercontent.com/D0SgMSzShvTcdvJUciiIwaWH2cXZxdZUA67XPyFQr9WWw4bYdfSR0dz9ZARwYeLmFBn2Ya5pqbbjgA=w544-h544-l90-rj"
         }
     ]
     return (
@@ -65,6 +92,14 @@ const Start = () => {
                 <h2>Artists</h2>
                 <div className="options">
                 {artistList.map(a=>{
+                    return <button onClick={e=>{
+                        submitId(e, a.id)
+                    }}><img src={a.image} /><p>{a.name}</p></button>
+                })}
+                </div>
+                <h2>Lists</h2>
+                <div className="options">
+                    {playList.map(a=>{
                     return <button onClick={e=>{
                         submitId(e, a.id)
                     }}><img src={a.image} /><p>{a.name}</p></button>

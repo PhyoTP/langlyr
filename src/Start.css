@@ -30,7 +30,8 @@
   border: none;
   border-radius: 0.5rem;
   background-color: navy;
-  aspect-ratio: 1;
+  min-width: 10rem;
+  max-width: 10rem;
   height: 10rem;
   box-shadow: 0.5rem -0.5rem 0 aqua;
   position: relative;
@@ -38,17 +39,20 @@
   transition: all 0.5s;
   padding: 0;
   overflow: hidden;
+  margin-left: 2rem;
 }
 .options button:hover{
   box-shadow: 0.5rem 0.5rem 0 white;
   bottom: 0.5rem;
 }
 .options{
-  display: flex;
-  justify-content: space-around;
-  gap: 2rem;
+  height: 12rem;
+  overflow-x: scroll;
+  padding-top: 1rem;
+  padding-right: 1rem;
+  white-space: nowrap;
   width: 100%;
-  flex-wrap: wrap;
+  display: flex;
   align-items: center;
 }
 .options img{
@@ -56,14 +60,17 @@
   width: 100%;
   object-fit: cover;
   filter: brightness(50%);
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 .options p{
-  position: absolute;
-  top: calc(50% - 3rem);
   width: 100%;
   z-index: 10;
   color: white;
   font-size: 200%;
+  text-wrap: wrap;
+  position: relative;
 }
 .title{
   color: navy;
@@ -82,7 +89,7 @@
 }
 main .main{
   position: relative;
-  bottom: calc((40vh - 6rem) / 2);
+  bottom: calc((40vh - 8rem) / 2);
   border-radius: calc(0.5rem + 16px);
   width: 80%;
   background: aquamarine;
