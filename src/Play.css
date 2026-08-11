@@ -11,12 +11,6 @@
 .vSpacer {
     flex: 1 0 auto;
 }
-.activeLyric{
-    background-color: rgba(255, 255, 255, 0.8);
-    position: sticky;
-    bottom: 0;
-    min-height: 3rem;
-}
 #yt-player{
     width: 80%;
     border-radius: 1rem;
@@ -99,4 +93,48 @@ td > button{
 }
 .expand-cell {
   width: 100%;
+}
+.expand-cell *{
+    display: inline-block;
+    margin-right: 3ch;
+}
+.activeLyric {
+    background-color: rgba(255, 255, 255, 0.8);
+    position: sticky;
+    bottom: 0;
+    min-height: 3rem;
+}
+.lyric:last-child:not(.activeLyric){
+    font-size: 90%;
+    color:rgba(0, 0, 0, 0.5);
+}
+.delete-button{
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+.delete-button *{
+    color: red;
+    fill: white;
+    transition: all 0.5s;
+}
+.delete-button:hover *{
+    color: white;
+    fill: red;
+}
+button.sentence{
+    background: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+button.sentence:hover{
+    background-color: white;
+    transition: all 0.1s;
+}
+button.sentence:not(:hover){
+    border: 1px solid grey;
+    transition: all 0.1s;
+}
+.sentence{
+    font-size: 90%;
 }
