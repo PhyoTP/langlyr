@@ -142,7 +142,10 @@ const Play = () => {
                 const currentTime = playerRef.current?.getCurrentTime?.();
                 if (currentTime == null) return;
 
-                const index = lyrics[0].findIndex(ts => convertTime(ts) > currentTime) - 1;
+                let index = lyrics[0].findIndex(ts => convertTime(ts) > currentTime) - 1;
+                if (index < 0 || index >= lyrics[1].length) {
+                    index = lyrics[1].length - 1;
+                }
 
                 if (index !== currentLyricI) {
                     setCurrentLyricI(index);
@@ -212,10 +215,11 @@ const Play = () => {
         }));
     }
     function kataToHira(str) {
-                return str.replace(/[\u30A1-\u30F6]/g, ch =>
-                    String.fromCharCode(ch.charCodeAt(0) - 0x60)
-                );
-            }
+        if (!str) return "";
+        return str.replace(/[\u30A1-\u30F6]/g, ch =>
+            String.fromCharCode(ch.charCodeAt(0) - 0x60)
+        );
+    }
     const translate = async (s) => {
         const word = s.base
         if (translations[s.base]) {
@@ -347,9 +351,7 @@ const Play = () => {
                                         <p
                                             className={`segment${noTransl ? "" : " japanese"}`}
                                             onClick={noTransl ? undefined : () => translate(s)}
-                                            onMouseEnter={e=>{if (!inSong) {e.target.innerText=kataToHira(s.pronunciation)}} }
-                                            onMouseLeave={e=>e.target.innerText=inSong ? translations[s.base]?.meaning : s.segment}
-                                            title={s.base}
+                                            title={`${s.base} (${kataToHira(s.pronunciation)})`}
                                         >
                                             {inSong ? translations[s.base]?.meaning : s.segment}
                                         </p>
