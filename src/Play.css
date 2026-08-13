@@ -96,7 +96,7 @@ td > button{
 }
 .expand-cell *{
     display: inline-block;
-    margin-right: 3ch;
+    margin-right: 2ch;
 }
 .activeLyric {
     background-color: rgba(255, 255, 255, 0.8);
@@ -137,4 +137,9 @@ button.sentence:not(:hover){
 }
 .sentence{
     font-size: 90%;
+}
+p.sentence{
+    margin-top: 0.2rem;
+    margin-bottom: 0.2rem;
+    text-decoration: underline dashed;
 }

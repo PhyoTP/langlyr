@@ -28,6 +28,13 @@ const Play = () => {
     const [tokeniser, setTokeniser] = useState(null);
     const [lyricsCount, setLyricsC] = useState(0);
     const [hoverWord, setHoverWord] = useState();
+    useEffect(()=>{
+        const localTranslation = localStorage.getItem("translations");
+        console.log(localTranslation)
+        if (Object.prototype.toString.call(JSON.parse(localTranslation)) === '[object Object]'){
+            setTranslations(JSON.parse(localTranslation))
+        }
+    },[])
     useEffect(() => {
         if (!window.YT) {
             const tag = document.createElement('script');
@@ -56,7 +63,7 @@ const Play = () => {
                         setReady(true);
                         // Shuffle playlist on ready
                         event.target.setShuffle(true);
-                        event.target.nextVideo();
+                        // event.target.nextVideo();
                         console.log(playerRef.current.getPlaylist());
                     },
                     onStateChange: (event) => {
@@ -143,7 +150,7 @@ const Play = () => {
                 if (currentTime == null) return;
 
                 let index = lyrics[0].findIndex(ts => convertTime(ts) > currentTime) - 1;
-                if (index < 0 || index >= lyrics[1].length) {
+                if (index < 0 && convertTime(lyrics[0][0]) < currentTime) {
                     index = lyrics[1].length - 1;
                 }
 
@@ -213,6 +220,14 @@ const Play = () => {
                 ]
             }
         }));
+        localStorage.setItem("translations",JSON.stringify(translations))
+    }
+    const removeTranslation = (word) => {
+        setTranslations(prev => {
+            const { [word]: _, ...newTranslations } = prev;
+            return newTranslations;
+        });
+        localStorage.setItem("translations",JSON.stringify(translations))
     }
     function kataToHira(str) {
         if (!str) return "";
@@ -247,9 +262,9 @@ const Play = () => {
 
             console.log(chosenResults)
             const posMappings = [
-                { "名詞": "Noun", "形容詞": "adjective", "接続詞": "Conjunction", "接頭詞": "Prefix", "動詞": "(^|\s)verb" },
-                { "接尾": "Suffix" },
-                {},
+                { "名詞": "Noun", "形容詞": "adjective", "接続詞": "Conjunction", "接頭詞": "Prefix", "動詞": "(^|\\s)verb", "副詞": "Adverb ", "接頭詞": "Prefix" },
+                { "接尾": "Suffix", "代名詞": "Pronoun", "数": "Numeric", "副詞可能": "Adverb " },
+                {"副詞可能": "Adverb "},
                 {}
             ]
 
@@ -259,7 +274,6 @@ const Play = () => {
                     sense
                 }))
             );
-
             const selected = senses.sift(({ sense }) => {
                 for (let i = 3; i >= 0; i--) {
                     if (!s.pos[i]) continue;
@@ -267,11 +281,13 @@ const Play = () => {
                     const mapped = posMappings[i][s.pos[i]];
                     if (!mapped) continue;
                     const mapRegex = new RegExp(mapped)
-                    return sense.parts_of_speech.some(p => mapRegex.test(p));
+                    if (sense.parts_of_speech.some(p => mapRegex.test(p))) return true;
+
                 }
                 return false;
             });
 
+            console.log(selected)
 
             addTranslation(word, lyrics[1].filter((l, i) => segment(l).some(w => w.base == s.base) && lyrics[1].indexOf(l) === i).map((sentence) => {
                 return {
@@ -380,29 +396,29 @@ const Play = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {Object.keys(translations).map(word => {
+                        {Object.keys(translations).filter(t=>translations[t].sentences.some(s => s.song == currentTitle)).map(word => {
                             return <tr key={word}>
                                 <td>{word}</td>
                                 <td>{translations[word].hiragana}</td>
                                 <td>{translations[word].meaning}</td>
-                                <td className="expand-cell">{translations[word].sentences.map(sent => {
-                                    if (sent.song == currentTitle) {
+                                <td className="expand-cell">
+                                    {translations[word].sentences.filter(s=>s.song == currentTitle && s.times).map(sent => {
+                                    
                                         return <button onClick={() =>
                                             sent.times && playerRef.current?.seekTo(convertTime(sent.times[0]), true)
                                         } className="sentence">{sent.sentence}</button>
-                                    } else {
+                                    
+                                    })}
+                                    {translations[word].sentences.filter(s=>s.song != currentTitle || !s.times).map(sent => {
+
                                         return <p className="sentence">{sent.sentence}</p>
-                                    }
-                                }
-                                )
-                                }</td>
+                                    
+                                    })}
+                                </td>
                                 <td>
                                     <button
                                         onClick={() => {
-                                            setTranslations(prev => {
-                                                const { [word]: _, ...newTranslations } = prev;
-                                                return newTranslations;
-                                            });
+                                            removeTranslation(word)
                                         }}
                                         className="delete-button"
                                     >
