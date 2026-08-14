@@ -3,7 +3,7 @@ import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import "./Play.css";
 import useSWR from "swr";
 import * as kuromoji from '@patdx/kuromoji'
-import { FiChevronLeft, FiChevronRight, FiMinusCircle } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiMinusCircle, FiCopy, FiCheck } from "react-icons/fi";
 
 const fetcher = async (url) => {
     const res = await fetch(url);
@@ -347,13 +347,18 @@ const Play = () => {
                             ref={el => lyricRefs.current[i] = el}
                             className={`${i === currentLyricI && lyrics[0] ? "activeLyric " : ""}lyric`}
                         >
+                            <button className="copy-lyric" onClick={e=>{
+                                navigator.clipboard.writeText(lyrics[1][i])
+                                .then(()=>e.target.classList.add('copied'))
+                            }}><FiCopy /><FiCheck /></button>
                             {lyrics[0] &&
                                 <button className="lyricTime" onClick={() => {
                                     playerRef.current?.seekTo(convertTime(lyrics[0][i]), true)
                                 }}>{lyrics[0][i]}</button>
                             }
+                            <div className="lyric-container">
                             {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s, i) => {
-                                const grammar = [["助詞", "感動詞", "記号", "フィラー", "助動詞"], ["間投","非自立"]]
+                                const grammar = [["助詞", "感動詞", "記号", "フィラー", "助動詞"], ["間投","非自立","接尾"]]
                                 const posClasses = {
                                     vocab: ["形容詞"],
                                     grammar: [["接続詞"], ["非自立", "動詞非自立的", "接尾"]],
@@ -363,18 +368,19 @@ const Play = () => {
                                 const noTransl = inSong || !japaneseRegex.test(s.segment) || (s.pos[0] && grammar[0].includes(s.pos[0])) || (s.pos[1] && grammar[1].includes(s.pos[1]))
                                 return (
                                     <span className="segmentContainer" key={i}>
-                                        <p className="furigana">{inSong && translations[s.base]?.hiragana || /*s.pos[0] ||*/ ""}</p>
+                                        <p className="furigana">{inSong && translations[s.base]?.meaning || /*s.pos[0] ||*/ ""}</p>
                                         <p
                                             className={`segment${noTransl ? "" : " japanese"}`}
                                             onClick={noTransl ? undefined : () => translate(s)}
-                                            title={`${s.base} (${kataToHira(s.pronunciation)})`}
+                                            title={`${s.base}`}
                                         >
-                                            {inSong ? translations[s.base]?.meaning : s.segment}
+                                            {s.segment}
                                         </p>
-                                        <p className="kanji">{inSong && translations[s.base] && (translations[s.base].hiragana != s.segment) ? s.segment : ""}</p>
+                                        <p className="kanji">{inSong && translations[s.base] && (translations[s.base].hiragana != s.segment) ? kataToHira(s.pronunciation) : ""}</p>
                                     </span>
                                 )
                             })}
+                            </div>
                         </div>)
                     }) : !lyrics && !lyricLoading && !strictLyricLoading && <h1>Japanese lyrics not found.</h1>}
                     {lrcLibError && <h1>LRCLib error: {lrcLibError.message}</h1>}

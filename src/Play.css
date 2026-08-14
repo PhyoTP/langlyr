@@ -23,7 +23,9 @@
     border: none;
     cursor: pointer;
     text-decoration: underline;
+    height: 100%;
 }
+
 .lyric{
     display: flex;
     align-items: center;
@@ -31,7 +33,12 @@
     transition: all 1s;
     margin: 0.1rem;
 }
-
+.lyric-container{
+    display: flex;
+    flex-wrap: wrap;
+    height: fit-content;
+    padding-bottom: 0.5rem;
+}
 .japanese{
     text-decoration: underline;
     cursor: pointer;
@@ -53,6 +60,9 @@
 .segment {
     line-height: 1;
     margin-right: 0.1rem;
+}
+.japanese:hover{
+    background-color: white;
 }
 
 .vocabularyTable{
@@ -102,7 +112,7 @@ td > button{
     background-color: rgba(255, 255, 255, 0.8);
     position: sticky;
     bottom: 0;
-    min-height: 3rem;
+    height: max-content;
 }
 .lyric:last-child:not(.activeLyric){
     font-size: 90%;
@@ -142,4 +152,20 @@ p.sentence{
     margin-top: 0.2rem;
     margin-bottom: 0.2rem;
     text-decoration: underline dashed;
+}
+.copy-lyric{
+    border: none;
+    background: none;
+    opacity: 0.5;
+    cursor: pointer;
+}
+
+.copy-lyric >:last-child{
+    display: none;
+}
+.copied.copy-lyric:focus >:first-child{
+    display: none;
+}
+.copied.copy-lyric:focus >:last-child{
+    display: inline;
 }
