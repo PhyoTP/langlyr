@@ -19,6 +19,8 @@ body{
 header{
   background-color: aquamarine;
   padding: 0.5rem;
+  display: flex;
+  justify-content: space-between;
 }
 header img{
   height: 3rem;

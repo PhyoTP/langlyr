@@ -1,10 +1,13 @@
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import "./Play.css";
 import useSWR from "swr";
 import * as kuromoji from '@patdx/kuromoji'
 import { FiChevronLeft, FiChevronRight, FiMinusCircle, FiCopy, FiCheck } from "react-icons/fi";
-
+export const convertTime = (timestamp) => {
+    const [m, s] = timestamp.split(":").map(Number);
+    return m * 60 + s
+}
 const fetcher = async (url) => {
     const res = await fetch(url);
 
@@ -15,8 +18,10 @@ const fetcher = async (url) => {
     return res.json();
 };
 const japaneseRegex = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
+const kanjiRegex = /\p{Script=Han}/u;
 const Play = () => {
     const { type, id } = useParams();
+    const [searchParams] = useSearchParams();
     const playerRef = useRef(null);
     const lyricRefs = useRef([]);
     const lyricsContainer = useRef(null);
@@ -28,9 +33,9 @@ const Play = () => {
     const [tokeniser, setTokeniser] = useState(null);
     const [lyricsCount, setLyricsC] = useState(0);
     const [hoverWord, setHoverWord] = useState();
+    const hasSeeked = useRef(false);
     useEffect(() => {
         const localTranslation = localStorage.getItem("translations");
-        console.log(localTranslation)
         if (Object.prototype.toString.call(JSON.parse(localTranslation)) === '[object Object]') {
             setTranslations(JSON.parse(localTranslation))
         }
@@ -65,7 +70,7 @@ const Play = () => {
                         event.target.nextVideo();
                         event.target.setShuffle(true);
                         // event.target.nextVideo();
-                        console.log(playerRef.current.getPlaylist());
+                        console.table(playerRef.current.getPlaylist());
                     },
                     onStateChange: (event) => {
                         // Update playing state based on YouTube player state
@@ -73,6 +78,14 @@ const Play = () => {
                         if (event.data === window.YT.PlayerState.PLAYING) {
                             const data = playerRef.current.getVideoData();
                             setCurrentTitle(data.title);
+                            if (!hasSeeked.current) {
+                                const time = searchParams.get("time");
+
+                                if (time) {
+                                    event.target.seekTo(Number(time), true);
+                                    hasSeeked.current = true;
+                                }
+                            }
                         }
                     }
                 }
@@ -140,10 +153,6 @@ const Play = () => {
     useEffect(() => {
         setLyricsI(0)
     }, [currentTitle])
-    const convertTime = (timestamp) => {
-        const [m, s] = timestamp.split(":").map(Number);
-        return m * 60 + s
-    }
     useEffect(() => {
         if (!lyrics) return;
         if (lyrics[0]) {
@@ -269,12 +278,11 @@ const Play = () => {
         const potentials = { "え": "う", "け": "く", "げ": "ぐ", "せ": "す", "て": "つ", "ね": "ぬ", "べ": "ぶ", "め": "む", "れ": "る" }
         if (words && words.length > 0) {
             let chosenResults = []
-            const kanjiRegex = /\p{Script=Han}/u;
 
             if (kanjiRegex.test(word)) {
                 chosenResults = words.sift(w => w.japanese.some(j => j.word === word))
                 chosenResults = words.sift(w => w.japanese.some(j => j.reading === s.pronunciation || j.reading === kataToHira(s.reading)))
-            }else{
+            } else {
                 chosenResults = words.sift(w => w.japanese.some(j => j.reading === word))
             }
 
@@ -393,7 +401,7 @@ const Play = () => {
                                         other: [["助詞", "感動詞", "記号", "フィラー"], ["間投"]]
                                     }
                                     const inSong = getTranslation(s)?.sentences.some(s => s.song == currentTitle);
-                                    const noTransl = inSong || !japaneseRegex.test(s.segment) || (s.pos[0] && grammar[0].includes(s.pos[0])) || (s.pos[1] && grammar[1].includes(s.pos[1]))
+                                    const noTransl = inSong || !japaneseRegex.test(s.segment) || ((s.pos[0] && grammar[0].includes(s.pos[0])) || (s.pos[1] && grammar[1].includes(s.pos[1])) && !kanjiRegex.test(s.segment))
                                     return (
                                         <span className="segmentContainer" key={i}>
                                             <p className="furigana">{inSong && getTranslation(s)?.meaning || /*s.pos[0] ||*/ ""}</p>
@@ -435,7 +443,7 @@ const Play = () => {
                     <tbody>
                         {Object.keys(translations).filter(t => translations[t].sentences.some(s => s.song == currentTitle)).map(word => {
                             return <tr key={word}>
-                                 <td><a href={`https://jisho.org/search/${word}`}>{word}</a></td>
+                                <td><a href={`https://jisho.org/search/${word}`}>{word}</a></td>
                                 <td>{translations[word].hiragana}</td>
                                 <td>{translations[word].meaning}</td>
                                 <td className="expand-cell">
