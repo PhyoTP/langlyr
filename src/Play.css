@@ -82,7 +82,7 @@
     position: relative;
     top: 0.5rem;
 }
-caption {
+.caption {
     width: calc(80% - 4rem);
     text-align: left;
     font-size: 80%;

@@ -4,6 +4,7 @@ import "./Play.css";
 import useSWR from "swr";
 import * as kuromoji from '@patdx/kuromoji'
 import { FiChevronLeft, FiChevronRight, FiMinusCircle, FiCopy, FiCheck } from "react-icons/fi";
+import { formatTranslations } from "./Translations";
 export const convertTime = (timestamp) => {
     const [m, s] = timestamp.split(":").map(Number);
     return m * 60 + s
@@ -36,8 +37,14 @@ const Play = () => {
     const hasSeeked = useRef(false);
     useEffect(() => {
         const localTranslation = localStorage.getItem("translations");
-        if (Object.prototype.toString.call(JSON.parse(localTranslation)) === '[object Object]') {
-            setTranslations(JSON.parse(localTranslation))
+        if (!localTranslation) return;
+
+        try{
+            const parsedTranslation = formatTranslations(localTranslation)
+            setTranslations(parsedTranslation)
+            
+        }catch (e){
+            console.error("Failed to parse translations: ", error);
         }
     }, [])
     useEffect(() => {
@@ -58,6 +65,7 @@ const Play = () => {
                     ...(type == "playlist" && { listType: "playlist", list: id }),
                     autoplay: 1,
                     modestbranding: 1,
+                    rel: 0,
                     shuffle: 1,
                     loop: 1,
                     enablejsapi: 1
@@ -66,10 +74,11 @@ const Play = () => {
                 events: {
                     onReady: (event) => {
                         setReady(true);
+                        // Set initial volume when player is ready
+                        event.target.setVolume(50);
                         // Shuffle playlist on ready
-                        event.target.nextVideo();
                         event.target.setShuffle(true);
-                        // event.target.nextVideo();
+                        event.target.nextVideo();
                         console.table(playerRef.current.getPlaylist());
                     },
                     onStateChange: (event) => {
@@ -128,14 +137,18 @@ const Play = () => {
             if (strictLyricData.length == 0 && !lyricData) return null;
             const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
             const japaneseL = data.filter(l => japaneseRegex.test(l.plainLyrics))
+            console.table(japaneseL)
             if (japaneseL.length === 0) return null;
             const syncedL = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))
             if (syncedL.length > 0) {
                 setLyricsC(syncedL.length);
                 const chosen = syncedL[lyricsI % syncedL.length]
                 const lines = chosen.syncedLyrics.split("\n").filter(l => l.length > 0 && /^\d$/.test(l[1]));
-                console.table(lines)
+                // console.table(lines)
                 const times = lines.map(line => line.split("]")[0].slice(1));
+                if (!japaneseRegex.test(chosen.syncedLyrics) && lines.length == chosen.plainLyrics.split("\n").length){
+                    return [times, chosen.plainLyrics.split("\n")]
+                }
                 const verses = lines.map(line => line.split("]")[1]?.trim());
                 return [times, verses];
             } else {
@@ -219,26 +232,32 @@ const Play = () => {
             });
         }
     }, [tokeniser])
-    const addTranslation = (word, sents, info = {}) => {
-        setTranslations(prev => ({
-            ...prev,
-            [word]: {
-                ...prev[word],
-                ...info,
-                sentences: [
-                    ...(prev[word]?.sentences ?? []),
-                    ...sents
-                ]
-            }
-        }));
-        localStorage.setItem("translations", JSON.stringify(translations))
-    }
+    const addTranslation = (word, meaning, sentence, hiragana) => {
+        setTranslations(prev => {
+            const next = {
+                ...prev,
+                [word]: {
+                    ...(prev[word] ?? {}),
+                    ...(meaning && {[meaning]: {
+                        ...(prev[word]?.[meaning] ?? { hiragana }),
+                        sentences: [
+                            ...(prev[word]?.[meaning]?.sentences ?? []),
+                            sentence // sentence, time, song, id
+                        ]
+                    }})
+                }
+            };
+
+            localStorage.setItem("translations", JSON.stringify(next));
+            return next;
+        });
+    };
     const removeTranslation = (word) => {
         setTranslations(prev => {
             const { [word]: _, ...newTranslations } = prev;
+            localStorage.setItem("translations", JSON.stringify(newTranslations))
             return newTranslations;
         });
-        localStorage.setItem("translations", JSON.stringify(translations))
     }
     function kataToHira(str) {
         if (!str) return "";
@@ -247,9 +266,15 @@ const Play = () => {
         );
     }
     function getTranslation(s) {
+        const katakanaRegex = /\p{Script=Katakana}/u;
+        if (katakanaRegex.test(s.segment)){
+            if(translations[s.segment]){
+                return translations[s.segment]
+            }
+        }
         if (translations[s.base]) {
             return translations[s.base]
-        } else if (s.pos[0] == "動詞") {
+        } else if (s.pos?.[0] == "動詞") {
             const potentials = { "え": "う", "け": "く", "げ": "ぐ", "せ": "す", "て": "つ", "ね": "ぬ", "べ": "ぶ", "め": "む", "れ": "る" }
             if (Object.keys(potentials).some(p => s.segment.endsWith(p) || s.segment.endsWith(p + "る"))) {
                 let newBase = s.segment;
@@ -260,80 +285,111 @@ const Play = () => {
         }
 
     }
-    const translate = async (s) => {
-        const word = s.base
-        if (getTranslation(s)) {
-            addTranslation(word, lyrics[1].filter(l => segment(l).some(w => w.base == s.base)).map((sentence) => {
-                return {
+    const translate = async (s, sentence) => {
+        const word = s.base == "*" ? s.segment : s.base
+        try {
+            const response = await fetch('https://api.langlyr.phyotp.dev/translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    keyword: word,
                     sentence,
-                    times: lyrics[0]?.filter((_, index) => segment(lyrics[1][index]).some(w => w.base == s.base)),
-                    song: currentTitle,
-                    youtube_id: playerRef.current.getVideoData().video_id
-                }
-            }))
-        }
-        const response = await fetch('https://api.langlyr.phyotp.dev/jisho?keyword=' + encodeURIComponent(word));
-        const data = await response.json();
-        let words = data?.data;
-        const potentials = { "え": "う", "け": "く", "げ": "ぐ", "せ": "す", "て": "つ", "ね": "ぬ", "べ": "ぶ", "め": "む", "れ": "る" }
-        if (words && words.length > 0) {
-            let chosenResults = []
-
-            if (kanjiRegex.test(word)) {
-                chosenResults = words.sift(w => w.japanese.some(j => j.word === word))
-                chosenResults = words.sift(w => w.japanese.some(j => j.reading === s.pronunciation || j.reading === kataToHira(s.reading)))
-            } else {
-                chosenResults = words.sift(w => w.japanese.some(j => j.reading === word))
-            }
-
-            console.log(chosenResults)
-            const posMappings = [
-                { "名詞": "Noun", "形容詞": "adjective", "接続詞": "Conjunction", "接頭詞": "Prefix", "動詞": "(^|\\s)verb", "副詞": "Adverb ", "接頭詞": "Prefix" },
-                { "接尾": "Suffix", "代名詞": "Pronoun", "数": "Numeric", "副詞可能": "Adverb " },
-                { "副詞可能": "Adverb " },
-                {}
-            ]
-
-            const senses = chosenResults.flatMap((result, index) =>
-                result.senses.map(sense => ({
-                    index,
-                    sense
-                }))
-            );
-            const selected = senses.sift(({ sense }) => {
-                for (let i = 3; i >= 0; i--) {
-                    if (!s.pos[i]) continue;
-
-                    const mapped = posMappings[i][s.pos[i]];
-                    if (!mapped) continue;
-                    const mapRegex = new RegExp(mapped)
-                    if (sense.parts_of_speech.some(p => mapRegex.test(p))) return true;
-
-                }
-                return false;
+                    shortlist: getTranslation(s) && Object.keys(getTranslation(s))
+                })
             });
+            const { translation, hiragana } = await response.json()
+            console.log(translation)
+            addTranslation(word, translation, {sentence, time: lyrics[0]?.find((_, index) => lyrics[1][index] == sentence), song: currentTitle, youtube_id: playerRef.current.getVideoData().video_id}, hiragana || kataToHira(s.reading.length > 0 ? s.reading : s.segment))
+            // addTranslation(word, lyrics[1].filter((l, i) => segment(l).some(w => w.base == s.base || w.base == s.basic_form) && lyrics[1].indexOf(l) === i).map((sentence) => {
+            //     return {
+            //         sentence,
+            //         times: lyrics[0]?.filter((_, index) => lyrics[1][index] == sentence),
+            //         song: currentTitle,
+            //         youtube_id: playerRef.current.getVideoData().video_id
+            //     }
+            // }), {
+            //     meaning: translation,
+            //     hiragana: kataToHira(s.reading),
+            // }
+            // );
+        } catch {
+            const response = await fetch('https://api.langlyr.phyotp.dev/jisho?keyword=' + encodeURIComponent(word));
+            const data = await response.json();
+            let words = data?.data;
+            const potentials = { "え": "う", "け": "く", "げ": "ぐ", "せ": "す", "て": "つ", "ね": "ぬ", "べ": "ぶ", "め": "む", "れ": "る" }
+            if (words && words.length > 0) {
+                let chosenResults = []
 
-            console.log(selected)
-
-            addTranslation(word, lyrics[1].filter((l, i) => segment(l).some(w => w.base == s.base || w.base == s.basic_form) && lyrics[1].indexOf(l) === i).map((sentence) => {
-                return {
-                    sentence,
-                    times: lyrics[0]?.filter((_, index) => lyrics[1][index] == sentence),
-                    song: currentTitle,
-                    youtube_id: playerRef.current.getVideoData().video_id
+                if (kanjiRegex.test(word)) {
+                    chosenResults = words.sift(w => w.japanese.some(j => j.word === word))
+                    chosenResults = words.sift(w => w.japanese.some(j => j.reading === s.pronunciation || j.reading === kataToHira(s.reading)))
+                } else {
+                    chosenResults = words.sift(w => w.japanese.some(j => j.reading === word))
                 }
-            }), {
-                meaning: selected[0].sense.english_definitions[0],
-                hiragana: chosenResults[selected[0].index].japanese.sift(j => j.reading === s.pronunciation || j.reading === kataToHira(s.reading) || j.reading === word)[0].reading,
+
+                console.log(chosenResults)
+                const posMappings = [
+                    { "名詞": "Noun", "形容詞": "adjective", "接続詞": "Conjunction", "接頭詞": "Prefix", "動詞": "(^|\\s)verb", "副詞": "Adverb ", "接頭詞": "Prefix" },
+                    { "接尾": "Suffix", "代名詞": "Pronoun", "数": "Numeric", "副詞可能": "Adverb " },
+                    { "副詞可能": "Adverb " },
+                    {}
+                ]
+
+                const senses = chosenResults.flatMap((result, index) =>
+                    result.senses.map(sense => ({
+                        index,
+                        sense
+                    }))
+                );
+                const selected = senses.sift(({ sense }) => {
+                    for (let i = 3; i >= 0; i--) {
+                        if (!s.pos[i]) continue;
+
+                        const mapped = posMappings[i][s.pos[i]];
+                        if (!mapped) continue;
+                        const mapRegex = new RegExp(mapped)
+                        if (sense.parts_of_speech.some(p => mapRegex.test(p))) return true;
+
+                    }
+                    return false;
+                });
+
+                console.log(selected)
+
+                addTranslation(
+                    word, 
+                    selected[0].sense.english_definitions[0], 
+                    {
+                        sentence, 
+                        time: lyrics[0]?.find((_, index) => lyrics[1][index] == sentence), 
+                        song: currentTitle, youtube_id: playerRef.current.getVideoData().video_id
+                    }, 
+                    chosenResults[selected[0].index].japanese.sift(j => j.reading === s.pronunciation || j.reading === kataToHira(s.reading) || j.reading === word)[0].reading
+                )
+                // addTranslation(word, lyrics[1].filter((l, i) => segment(l).some(w => w.base == s.base || w.base == s.basic_form) && lyrics[1].indexOf(l) === i).map((sentence) => {
+                //     return {
+                //         sentence,
+                //         times: lyrics[0]?.filter((_, index) => lyrics[1][index] == sentence),
+                //         song: currentTitle,
+                //         youtube_id: playerRef.current.getVideoData().video_id
+                //     }
+                // }), {
+                //     meaning: selected[0].sense.english_definitions[0],
+                //     hiragana: chosenResults[selected[0].index].japanese.sift(j => j.reading === s.pronunciation || j.reading === kataToHira(s.reading) || j.reading === word)[0].reading,
+                // }
+                // );
+            } else if (s.pos[0] == "動詞") {
+                if (Object.keys(potentials).some(p => s.base.endsWith(p + "る"))) {
+                    let newBase = s.base;
+                    newBase = newBase.slice(0, -2) + potentials[newBase.at(-2)]
+                    console.log(newBase)
+                    translate({ ...s, base: newBase }, sentence)
+                }
             }
-            );
-        } else if (s.pos[0] == "動詞") {
-            if (Object.keys(potentials).some(p => s.base.endsWith(p + "る"))) {
-                let newBase = s.base;
-                newBase = newBase.slice(0, -2) + potentials[newBase.at(-2)]
-                console.log(newBase)
-                translate({ ...s, base: newBase })
-            }
+
+
         }
     }
     useEffect(() => {
@@ -395,27 +451,29 @@ const Play = () => {
                             <div className="lyric-container">
                                 {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s, i) => {
                                     const grammar = [["助詞", "感動詞", "記号", "フィラー", "助動詞"], ["間投", "非自立", "接尾"]]
-                                    const posClasses = {
-                                        vocab: ["形容詞"],
-                                        grammar: [["接続詞"], ["非自立", "動詞非自立的", "接尾"]],
-                                        other: [["助詞", "感動詞", "記号", "フィラー"], ["間投"]]
-                                    }
-                                    const inSong = getTranslation(s)?.sentences.some(s => s.song == currentTitle);
-                                    const noTransl = inSong || !japaneseRegex.test(s.segment) || ((s.pos[0] && grammar[0].includes(s.pos[0])) || (s.pos[1] && grammar[1].includes(s.pos[1])) && !kanjiRegex.test(s.segment))
+                                    // const posClasses = {
+                                    //     vocab: ["形容詞"],
+                                    //     grammar: [["接続詞"], ["非自立", "動詞非自立的", "接尾"]],
+                                    //     other: [["助詞", "感動詞", "記号", "フィラー"], ["間投"]]
+                                    // }
+                                    const wordTranslations = getTranslation(s)
+                                    const noTransl = !japaneseRegex.test(s.segment) || ((s.pos[0] && grammar[0].includes(s.pos[0])) || (s.pos[1] && grammar[1].includes(s.pos[1])) && !kanjiRegex.test(s.segment))
+                                    const inSentence = Object.keys(wordTranslations || {}).find(meaning=>wordTranslations[meaning]?.sentences?.some(s=>s?.sentence == lyric))
                                     return (
                                         <span className="segmentContainer" key={i}>
-                                            <p className="furigana">{inSong && getTranslation(s)?.meaning || /*s.pos[0] ||*/ ""}</p>
+                                            <p className="furigana">{wordTranslations ? inSentence || Object.keys(wordTranslations).at(0) : ""}</p>
                                             <p
-                                                className={`segment${noTransl ? "" : " japanese"}`}
+                                                className={`segment${noTransl || inSentence ? "" : " japanese"}`}
                                                 onClick={noTransl ? undefined : () => {
+                                                    addTranslation(s.base)
                                                     console.log(s)
-                                                    translate(s)
+                                                    translate(s, lyric)
                                                 }}
                                                 title={`${s.base} (${kataToHira(s.reading)})`}
                                             >
                                                 {s.segment}
                                             </p>
-                                            <p className="kanji">{inSong && getTranslation(s) && (getTranslation(s).hiragana != s.segment) ? getTranslation(s).hiragana : ""}</p>
+                                            <p className="kanji">{wordTranslations && kanjiRegex.test(s.segment) && (wordTranslations[inSentence]?.hiragana || kataToHira(s.reading))}</p>
                                         </span>
                                     )
                                 })}
@@ -426,7 +484,7 @@ const Play = () => {
                 </div>
             }
             {lyricsCount > 0 &&
-                <caption><button className="chevron-button" onClick={() => changeLyricsI(-1)}><FiChevronLeft /></button>Lyrics #{lyricsI + 1}<button className="chevron-button" onClick={() => changeLyricsI(1)}><FiChevronRight /></button></caption>
+                <div className="caption"><button className="chevron-button" onClick={() => changeLyricsI(-1)}><FiChevronLeft /></button>Lyrics #{lyricsI + 1}<button className="chevron-button" onClick={() => changeLyricsI(1)}><FiChevronRight /></button></div>
             }
             <div className="vocabularyTable">
                 <h2>Vocabulary</h2>
@@ -441,24 +499,40 @@ const Play = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {Object.keys(translations).filter(t => translations[t].sentences.some(s => s.song == currentTitle)).map(word => {
+                        {Object.keys(translations).filter(t => Object.values(translations[t]).some(t=>t.sentences.some(s => s?.song == currentTitle))).map(word => {
                             return <tr key={word}>
                                 <td><a href={`https://jisho.org/search/${word}`}>{word}</a></td>
-                                <td>{translations[word].hiragana}</td>
-                                <td>{translations[word].meaning}</td>
+                                <td>{Object.keys(translations[word]).map((t,i)=>{
+                                    return <>
+                                    {translations[word][t].hiragana}
+                                    {i != Object.keys(translations[word]).length - 1 && <hr />}
+                                    </>
+                                })}</td>
+                                <td>{Object.keys(translations[word]).map((t,i)=>{
+                                    return <>
+                                    {t}
+                                    {i != Object.keys(translations[word]).length - 1 && <hr />}
+                                    </>
+                                })}</td>
+                                
                                 <td className="expand-cell">
-                                    {translations[word].sentences.filter(s => s.song == currentTitle && s.times).map(sent => {
+                                    {Object.keys(translations[word]).map((t,i)=>{
+                                    return <>{translations[word][t].sentences.filter(s => s.song == currentTitle && s.time).map(sent => {
 
                                         return <button onClick={() =>
-                                            sent.times && playerRef.current?.seekTo(convertTime(sent.times[0]), true)
+                                            sent.time && playerRef.current?.seekTo(convertTime(sent.time), true)
                                         } className="sentence">{sent.sentence}</button>
 
                                     })}
-                                    {translations[word].sentences.filter(s => s.song != currentTitle || !s.times).map(sent => {
+                                    {translations[word][t].sentences.filter(s => s.song != currentTitle || !s.time).map(sent => {
 
-                                        return <p className="sentence" title={sent.song}>{sent.sentence}</p>
+                                        return <span className="sentence" title={sent.song}>{sent.sentence}</span>
 
                                     })}
+
+                                    {i != Object.keys(translations[word]).length - 1 && <hr />}
+                                    </>
+                                })}
                                 </td>
                                 <td>
                                     <button
