@@ -58,6 +58,21 @@ const Start = () => {
             name: "Miki Matsubara",
             id: "https://music.youtube.com/playlist?list=OLAK5uy_k-LDChYmgCGbGiCgNBYMser70buv-W_yo",
             image: "https://images.genius.com/bf314e7661c143fb4d15749842ff157f.980x980x1.png"
+        },
+        {
+            name: "CARAMEL CANDiD",
+            id: "https://music.youtube.com/playlist?list=OLAK5uy_l1GW7RN0mnY72dpJX_CFAS-fTcBudmC90",
+            image: "https://images.genius.com/6c1249ec443a750d63fd44590417233b.755x755x1.jpg"
+        },
+        {
+            name: "TWICE",
+            id: "https://music.youtube.com/playlist?list=OLAK5uy_nsOMCQJ4nEL6y0L4cuXp28KeMT6iNmFmY",
+            image: "https://images.genius.com/309da76e403666d515ce0b6675b0e674.1000x1000x1.png"
+        },
+        {
+            name: "AKB48",
+            id: "https://music.youtube.com/playlist?list=OLAK5uy_mD945kVxrze0akycwVSdxGfvrLucyOKmg",
+            image: "https://images.genius.com/44c505fe75621c6048f8646f994264c0.1000x1000x1.jpg"
         }
     ]
     const playList = [

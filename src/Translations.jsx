@@ -71,7 +71,7 @@ const Translations = () => {
                     <tbody>
                         {Object.keys(translations).length > 0 ? Object.keys(translations).filter(t=>{
                             if (query.length == 0) return true;
-                            const full = [t,translations[t].hiragana, translations[t].meaning].join("-")
+                            const full = [t,Object.keys(translations[t]), Object.values(translations[t]).map(h=>h.hiragana)].join("-")
                             return full.includes(query)
                         }).map(word => {
                             return <tr key={word}>

@@ -20,6 +20,7 @@ const fetcher = async (url) => {
 };
 const japaneseRegex = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const kanjiRegex = /\p{Script=Han}/u;
+const baseURL = "http://api.langlyr.phyotp.dev/"
 const Play = () => {
     const { type, id } = useParams();
     const [searchParams] = useSearchParams();
@@ -32,7 +33,6 @@ const Play = () => {
     const [translations, setTranslations] = useState({});
     const [lyricsI, setLyricsI] = useState(0);
     const [tokeniser, setTokeniser] = useState(null);
-    const [lyricsCount, setLyricsC] = useState(0);
     const [hoverWord, setHoverWord] = useState();
     const hasSeeked = useRef(false);
     useEffect(() => {
@@ -131,41 +131,33 @@ const Play = () => {
     }
     const { data: strictLyricData, isLoading: strictLyricLoading, error: lrcLibError } = useSWR(currentTitle !== "" ? `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist.trim())}&track_name=${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher)
     const { data: lyricData, isLoading: lyricLoading } = useSWR(strictLyricData && strictLyricData.length == 0 ? `https://lrclib.net/api/search?q=${encodeURIComponent(artist.trim())} ${encodeURIComponent(cleanTitle(currentTitle).replace(artistRegex(), "").trim())}` : null, fetcher);
-    const lyrics = useMemo(() => {
-        if (ready) {
-            if (!strictLyricData) return null;
-            if (strictLyricData.length == 0 && !lyricData) return null;
-            const data = strictLyricData.length == 0 ? lyricData : strictLyricData;
-            const japaneseL = data.filter(l => japaneseRegex.test(l.plainLyrics))
-            console.table(japaneseL)
-            if (japaneseL.length === 0) return null;
-            const syncedL = data.filter(l => l.syncedLyrics && japaneseRegex.test(l.plainLyrics))
-            if (syncedL.length > 0) {
-                setLyricsC(syncedL.length);
-                const chosen = syncedL[lyricsI % syncedL.length]
-                const lines = chosen.syncedLyrics.split("\n").filter(l => l.length > 0 && /^\d$/.test(l[1]));
-                // console.table(lines)
-                const times = lines.map(line => line.split("]")[0].slice(1));
-                if (!japaneseRegex.test(chosen.syncedLyrics) && lines.length == chosen.plainLyrics.split("\n").length){
-                    return [times, chosen.plainLyrics.split("\n")]
-                }
-                const verses = lines.map(line => line.split("]")[1]?.trim());
-                return [times, verses];
-            } else {
-                setLyricsC(japaneseL.length)
-                const chosen = japaneseL[lyricsI % japaneseL.length]
-                const lines = chosen.plainLyrics.split("\n").filter(l => l.length > 0);
-                console.table(lines)
-                return [null, lines];
+    const candidates = useMemo(() => {
+        if (!ready || !strictLyricData) return [];
+        const data = strictLyricData.length === 0 ? lyricData : strictLyricData;
+        if (!data) return [];
+        const jp = data.filter(l => japaneseRegex.test(l.plainLyrics));
+        const synced = jp.filter(l => l.syncedLyrics);
+        return synced.length > 0 ? synced : jp;
+    }, [strictLyricData, lyricData, ready]);
 
+    const lyricsCount = candidates.length;
+    const lyrics = useMemo(() => {
+        if (candidates.length === 0) return null;
+        const chosen = candidates[lyricsI % candidates.length];
+        const plain = chosen.plainLyrics.split("\n");
+
+        if (chosen.syncedLyrics) {
+            const lines = chosen.syncedLyrics
+            .split("\n")
+            .filter(l => l.length > 0 && /^\d$/.test(l[1]));
+            const times = lines.map(l => l.split("]")[0].slice(1));
+            if (!japaneseRegex.test(chosen.syncedLyrics) && lines.length === plain.length) {
+            return [times, plain];
             }
-        } else {
-            return null;
+            return [times, lines.map(l => l.split("]")[1]?.trim())];
         }
-    }, [strictLyricData, lyricData, ready, lyricsI])
-    useEffect(() => {
-        setLyricsI(0)
-    }, [currentTitle])
+        return [null, plain.filter(l => l.length > 0)];
+    }, [candidates, lyricsI]);
     useEffect(() => {
         if (!lyrics) return;
         if (lyrics[0]) {
@@ -180,7 +172,6 @@ const Play = () => {
 
                 if (index !== currentLyricI) {
                     setCurrentLyricI(index);
-                    segment(lyrics[1][index])
                 }
 
             }, 100);
@@ -190,6 +181,7 @@ const Play = () => {
             setCurrentLyricI(lyrics[1].length - 1)
         }
     }, [lyrics, currentLyricI]);
+    
     useEffect(() => {
         if (!lyricsContainer.current) return;
         if (lyricRefs.current.length > Math.max(currentLyricI, 1) && currentLyricI > 0) {
@@ -208,6 +200,26 @@ const Play = () => {
             return () => observer.disconnect();
         }
     }, [currentLyricI])
+    const { data: allTokens } = useSWR(
+        lyrics ? ["tokenise", lyrics[1]] : null,
+        ([, texts]) =>
+            fetch(baseURL + "tokenise", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texts }),
+            }).then(r => r.json())
+    );
+    const formatTokens = (tokens) => {
+        if (!tokens) return null;
+        return tokens.map(t => {
+            return {
+                ...t,
+                segment: t.surface,
+                base: t.dictionary_form,
+                pos: [...t.part_of_speech].filter(x => x !== "*")
+            }
+        })
+    }
     const segment = useCallback((str) => {
         if (tokeniser) {
             const tokens = tokeniser.tokenize(str)
@@ -232,6 +244,7 @@ const Play = () => {
             });
         }
     }, [tokeniser])
+    
     const addTranslation = (word, meaning, sentence, hiragana) => {
         setTranslations(prev => {
             const next = {
@@ -288,7 +301,7 @@ const Play = () => {
     const translate = async (s, sentence) => {
         const word = s.base == "*" ? s.segment : s.base
         try {
-            const response = await fetch('https://api.langlyr.phyotp.dev/translate', {
+            const response = await fetch(baseURL + 'translate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -302,20 +315,9 @@ const Play = () => {
             const { translation, hiragana } = await response.json()
             console.log(translation)
             addTranslation(word, translation, {sentence, time: lyrics[0]?.find((_, index) => lyrics[1][index] == sentence), song: currentTitle, youtube_id: playerRef.current.getVideoData().video_id}, hiragana || kataToHira(s.reading.length > 0 ? s.reading : s.segment))
-            // addTranslation(word, lyrics[1].filter((l, i) => segment(l).some(w => w.base == s.base || w.base == s.basic_form) && lyrics[1].indexOf(l) === i).map((sentence) => {
-            //     return {
-            //         sentence,
-            //         times: lyrics[0]?.filter((_, index) => lyrics[1][index] == sentence),
-            //         song: currentTitle,
-            //         youtube_id: playerRef.current.getVideoData().video_id
-            //     }
-            // }), {
-            //     meaning: translation,
-            //     hiragana: kataToHira(s.reading),
-            // }
-            // );
+            
         } catch {
-            const response = await fetch('https://api.langlyr.phyotp.dev/jisho?keyword=' + encodeURIComponent(word));
+            const response = await fetch(baseURL + 'jisho?keyword=' + encodeURIComponent(word));
             const data = await response.json();
             let words = data?.data;
             const potentials = { "え": "う", "け": "く", "げ": "ぐ", "せ": "す", "て": "つ", "ね": "ぬ", "べ": "ぶ", "め": "む", "れ": "る" }
@@ -361,31 +363,15 @@ const Play = () => {
                 addTranslation(
                     word, 
                     selected[0].sense.english_definitions[0], 
-                    {
-                        sentence, 
-                        time: lyrics[0]?.find((_, index) => lyrics[1][index] == sentence), 
-                        song: currentTitle, youtube_id: playerRef.current.getVideoData().video_id
-                    }, 
+                    {}, 
                     chosenResults[selected[0].index].japanese.sift(j => j.reading === s.pronunciation || j.reading === kataToHira(s.reading) || j.reading === word)[0].reading
                 )
-                // addTranslation(word, lyrics[1].filter((l, i) => segment(l).some(w => w.base == s.base || w.base == s.basic_form) && lyrics[1].indexOf(l) === i).map((sentence) => {
-                //     return {
-                //         sentence,
-                //         times: lyrics[0]?.filter((_, index) => lyrics[1][index] == sentence),
-                //         song: currentTitle,
-                //         youtube_id: playerRef.current.getVideoData().video_id
-                //     }
-                // }), {
-                //     meaning: selected[0].sense.english_definitions[0],
-                //     hiragana: chosenResults[selected[0].index].japanese.sift(j => j.reading === s.pronunciation || j.reading === kataToHira(s.reading) || j.reading === word)[0].reading,
-                // }
-                // );
             } else if (s.pos[0] == "動詞") {
                 if (Object.keys(potentials).some(p => s.base.endsWith(p + "る"))) {
                     let newBase = s.base;
                     newBase = newBase.slice(0, -2) + potentials[newBase.at(-2)]
                     console.log(newBase)
-                    translate({ ...s, base: newBase }, sentence)
+                    await translate({ ...s, base: newBase }, sentence)
                 }
             }
 
@@ -432,6 +418,7 @@ const Play = () => {
                     {!tokeniser && <p style={{ position: "absolute" }}>Loading tokeniser...</p>}
                     {strictLyricLoading && <h1>Loading lyrics...</h1>}
                     {lyricLoading && <h1>Still loading lyrics...</h1>}
+                    {strictLyricLoading === false && lyricLoading === false && candidates.length == 0 && <h1>Lyrics not found.</h1>}
                     {lyrics && lyrics[1].slice(0, Math.min(currentLyricI + 2, lyrics[1].length)).map((lyric, i) => {
                         return (<div
                             key={i}
@@ -449,25 +436,27 @@ const Play = () => {
                                 }}>{lyrics[0][i]}</button>
                             }
                             <div className="lyric-container">
-                                {segment(lyric).filter(s => s.segment.trim().length !== 0).map((s, i) => {
-                                    const grammar = [["助詞", "感動詞", "記号", "フィラー", "助動詞"], ["間投", "非自立", "接尾"]]
+                                {(formatTokens(allTokens?.[i]?.tokens) || segment(lyric)).filter(s => s.segment.trim().length !== 0).map((s, i) => {
+                                    const grammar = [["感動詞", "記号", "フィラー", "助動詞"], ["間投", "非自立", "接尾","格助詞","準体助詞"]]
                                     // const posClasses = {
                                     //     vocab: ["形容詞"],
                                     //     grammar: [["接続詞"], ["非自立", "動詞非自立的", "接尾"]],
                                     //     other: [["助詞", "感動詞", "記号", "フィラー"], ["間投"]]
                                     // }
                                     const wordTranslations = getTranslation(s)
-                                    const noTransl = !japaneseRegex.test(s.segment) || ((s.pos[0] && grammar[0].includes(s.pos[0])) || (s.pos[1] && grammar[1].includes(s.pos[1])) && !kanjiRegex.test(s.segment))
+                                    const noTransl = !japaneseRegex.test(s.segment) || ((s.pos?.[0] && grammar[0].includes(s.pos[0])) || (s.pos?.[1] && grammar[1].includes(s.pos[1])) && !kanjiRegex.test(s.segment))
                                     const inSentence = Object.keys(wordTranslations || {}).find(meaning=>wordTranslations[meaning]?.sentences?.some(s=>s?.sentence == lyric))
                                     return (
                                         <span className="segmentContainer" key={i}>
-                                            <p className="furigana">{wordTranslations ? inSentence || Object.keys(wordTranslations).at(0) : ""}</p>
+                                            <p className="furigana">{wordTranslations ? inSentence || Object.keys(wordTranslations).at(0) : /*s.pos[1] ||*/ ""}</p>
                                             <p
                                                 className={`segment${noTransl || inSentence ? "" : " japanese"}`}
-                                                onClick={noTransl ? undefined : () => {
+                                                onClick={noTransl ? undefined : async (e) => {
                                                     addTranslation(s.base)
+                                                    e.target.classList.add('loading-translation');
                                                     console.log(s)
-                                                    translate(s, lyric)
+                                                    await translate(s, lyric)
+                                                    e.target.classList.remove('loading-translation');
                                                 }}
                                                 title={`${s.base} (${kataToHira(s.reading)})`}
                                             >

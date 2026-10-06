@@ -169,3 +169,20 @@ p.sentence{
 .copied.copy-lyric:focus >:last-child{
     display: inline;
 }
+.loading-translation{
+    background-image: linear-gradient(to right, grey,black, grey);
+    background-size: 400% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: loading-gradient 2s linear infinite;
+}
+@keyframes loading-gradient {
+    0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 400% center;
+  }
+}
