@@ -1,37 +1,38 @@
 import "./Start.css"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom";
+import {FiCheck, FiCopy} from "react-icons/fi";
 const Start = () => {
     const [id, setId] = useState("");
     const [error, setError] = useState(null);
     const navigate = useNavigate();
     const [lyricsC, setLyricsC] = useState(null);
     const [clicked, setClicked] = useState([]);
-    useEffect(()=>{
+    useEffect(() => {
         if (!lyricsC) return;
         lyricsC.scrollTop = lyricsC.scrollHeight;
-    },[lyricsC])
-    const submitId = (e, autoid) =>{
+    }, [lyricsC])
+    const submitId = (e, autoid) => {
         const ID = autoid || id;
         e.preventDefault();
         const videoRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const videoMatch = ID.match(videoRegExp);
 
         if (videoMatch && videoMatch[2].length === 11) {
-            navigate("/play/video/"+videoMatch[2])
-        }else{
+            navigate("/play/video/" + videoMatch[2])
+        } else {
             const listRegExp = /[?&]list=([^#\&\?]+)/;
             const listMatch = ID.match(listRegExp);
 
             if (listMatch) {
-                navigate("/play/playlist/"+listMatch[1])
-            }else{
+                navigate("/play/playlist/" + listMatch[1])
+            } else {
                 setError("ID not found, make sure it is a real YouTube video or playlist!")
             }
         }
-    
+
     }
-    const changeId = (e) =>{
+    const changeId = (e) => {
         setId(e.target.value);
     }
     const artistList = [
@@ -211,51 +212,56 @@ const Start = () => {
                     <p>A Japanese lyric vocabulary learning app</p>
                 </div>
                 <div className="lyrics" ref={setLyricsC}>
-                    {exampleLyrics.map((l,i)=>(
+                    {exampleLyrics.map((l, i) => (
                         <div className={`lyric ${i == 3 && "activeLyric"}`}>
-                        <div className="lyric-container">
-                            {l.map(s=>(
-                                <span className="segmentContainer">
-                                    <p className="furigana">{clicked.includes(s.word) && s.meaning}</p>
-                                    <p 
-                                        className={`segment${s.meaning && !clicked.includes(s.word) ? " japanese" : ""}`}
-                                        onClick={s.meaning && !clicked.includes(s.word) ? e=>{
-                                            e.target.classList.add('loading-translation');
-                                            setTimeout(()=>{
-                                                setClicked(prev=>[...prev, s.word])
-                                                e.target.classList.remove('loading-translation');
-                                            },1000)
-                                        } : undefined}
-                                    >{s.word}</p>
-                                    <p className="kanji">{clicked.includes(s.word) && s.reading}</p>
-                                </span>
-                            ))}
+                            <button className="copy-lyric" onClick={e => {
+                                const button = e.currentTarget;
+                                navigator.clipboard.writeText(l.map(s=>s.word).join(""))
+                                    .then(() => button.classList.add('copied'))
+                            }}><FiCopy /><FiCheck /></button>
+                            <div className="lyric-container">
+                                {l.map(s => (
+                                    <span className="segmentContainer">
+                                        <p className="furigana">{clicked.includes(s.word) && s.meaning}</p>
+                                        <p
+                                            className={`segment${s.meaning && !clicked.includes(s.word) ? " japanese" : ""}`}
+                                            onClick={s.meaning && !clicked.includes(s.word) ? e => {
+                                                e.target.classList.add('loading-translation');
+                                                setTimeout(() => {
+                                                    setClicked(prev => [...prev, s.word])
+                                                    e.target.classList.remove('loading-translation');
+                                                }, 1000)
+                                            } : undefined}
+                                        >{s.word}</p>
+                                        <p className="kanji">{clicked.includes(s.word) && s.reading}</p>
+                                    </span>
+                                ))}
+                            </div>
                         </div>
-                    </div>
                     ))}
                 </div>
             </div>
             <form className="main" onSubmit={submitId}>
-                <input type="text" placeholder="Enter a YouTube video or playlist URL" className="mainField" value={id} onChange={changeId}/>
-                <input type="submit" className="mainSubmit" value="Learn"/>
-                {error &&(
+                <input type="text" placeholder="Enter a YouTube video or playlist URL" className="mainField" value={id} onChange={changeId} />
+                <input type="submit" className="mainSubmit" value="Learn" />
+                {error && (
                     <p className="error">Error: {error}</p>
                 )}
                 <h2>Artists</h2>
                 <div className="options">
-                {artistList.map(a=>{
-                    return <button onClick={e=>{
-                        submitId(e, a.id)
-                    }}><img src={a.image} /><p>{a.name}</p></button>
-                })}
+                    {artistList.map(a => {
+                        return <button onClick={e => {
+                            submitId(e, a.id)
+                        }}><img src={a.image} /><p>{a.name}</p></button>
+                    })}
                 </div>
                 <h2>Lists</h2>
                 <div className="options">
-                    {playList.map(a=>{
-                    return <button onClick={e=>{
-                        submitId(e, a.id)
-                    }}><img src={a.image} /><p>{a.name}</p></button>
-                })}
+                    {playList.map(a => {
+                        return <button onClick={e => {
+                            submitId(e, a.id)
+                        }}><img src={a.image} /><p>{a.name}</p></button>
+                    })}
                 </div>
             </form>
         </main>

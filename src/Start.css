@@ -97,6 +97,11 @@
   height: 20vh;
   box-shadow: -0.5rem -0.5rem 0 var(--secondary);
 }
+@media screen and (max-width: 95ch) {
+  .intro .lyrics{
+    display: none;
+  }
+}
 main .main{
   position: relative;
   bottom: calc((40vh - 8rem) / 2);
