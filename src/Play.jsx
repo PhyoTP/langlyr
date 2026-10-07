@@ -20,7 +20,7 @@ const fetcher = async (url) => {
 };
 const japaneseRegex = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const kanjiRegex = /\p{Script=Han}/u;
-const baseURL = "http://api.langlyr.phyotp.dev/"
+const baseURL = "https://api.langlyr.phyotp.dev/"
 const Play = () => {
     const { type, id } = useParams();
     const [searchParams] = useSearchParams();

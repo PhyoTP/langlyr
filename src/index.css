@@ -1,6 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Kiwi+Maru&display=swap');
 html *{
-  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-family: "Kiwi Maru", sans-serif;
 }
 .main{
     display: flex;
