@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FiMinusCircle } from "react-icons/fi";
 import { convertTime } from "./Play";
 import { Link } from "react-router-dom";
+import "./Translations.css";
 const japaneseRegex = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 export const formatTranslations = (rawTranslation) => {
     let parsedTranslation = JSON.parse(rawTranslation)

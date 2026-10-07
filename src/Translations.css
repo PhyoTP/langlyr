@@ -1,0 +1,4 @@
+.intro:not(:has(.lyrics)){
+    height: 30svh;
+    text-align: center;
+}

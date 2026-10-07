@@ -79,8 +79,8 @@
   margin: 0;
 }
 .intro{
-  padding: 0 10vw 0 10vw;
-  width: 80vw;
+  padding: 0 10svw 0 10svw;
+  width: 80svw;
   height: 85dvh;
   display: flex;
   align-items: center;
@@ -96,9 +96,12 @@
   flex: 0.5;
   height: 20vh;
   box-shadow: -0.5rem -0.5rem 0 var(--secondary);
+  position: absolute;
+  width: calc(100% - 2rem);
+  bottom: -2rem;
 }
 @media screen and (max-width: 95ch) {
-  .intro .lyrics{
+  .hero{
     display: none;
   }
 }
@@ -118,4 +121,24 @@ main{
 h2{
   text-decoration: underline wavy var(--main-bg) 1.5px;
   color: var(--primary-dark);
+}
+.hero-link{
+  color: var(--secondary-dark);
+  position: absolute;
+  top: -1rem;
+  right: 0;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  gap: 0.1rem;
+  transition-duration: 0.5s;
+}
+.hero-link:hover{
+  color: white;
+  text-decoration: underline wavy var(--main-bg) 1px;
+}
+.hero{
+  position: relative;
+  height: 20vh;
+  width: calc(80% - 4rem);
 }

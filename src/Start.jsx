@@ -1,13 +1,13 @@
 import "./Start.css"
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom";
-import {FiCheck, FiCopy} from "react-icons/fi";
+import { useNavigate, Link } from "react-router-dom";
+import { FiCheck, FiCopy, FiArrowRightCircle } from "react-icons/fi";
 const Start = () => {
     const [id, setId] = useState("");
     const [error, setError] = useState(null);
     const navigate = useNavigate();
     const [lyricsC, setLyricsC] = useState(null);
-    const [clicked, setClicked] = useState([]);
+    const [clicked, setClicked] = useState(["季節"]);
     useEffect(() => {
         if (!lyricsC) return;
         lyricsC.scrollTop = lyricsC.scrollHeight;
@@ -15,21 +15,21 @@ const Start = () => {
     const submitId = (e, autoid) => {
         const ID = autoid || id;
         e.preventDefault();
-        const videoRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const videoMatch = ID.match(videoRegExp);
+        const matchers = [
+            {type: "video",regex: /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/,condition: match=>match[2].length === 11, index: 2},
+            {type: "playlist",regex: /[?&]list=([^#\&\?]+)/,index: 1}
+        ]
+        for (let matcher of matchers){
+            matcher.condition = matcher.condition || (() => true);
+            const match = ID.match(matcher.regex);
 
-        if (videoMatch && videoMatch[2].length === 11) {
-            navigate("/play/video/" + videoMatch[2])
-        } else {
-            const listRegExp = /[?&]list=([^#\&\?]+)/;
-            const listMatch = ID.match(listRegExp);
-
-            if (listMatch) {
-                navigate("/play/playlist/" + listMatch[1])
-            } else {
-                setError("ID not found, make sure it is a real YouTube video or playlist!")
+            if (match && matcher.condition(match)) {
+                navigate(`/play/${matcher.type}/${match[matcher.index]}`)
             }
         }
+         
+        setError("ID not found, make sure it is a real YouTube video or playlist!")
+                
 
     }
     const changeId = (e) => {
@@ -211,6 +211,7 @@ const Start = () => {
                     <h1 className="title">LangLyr</h1>
                     <p>A Japanese lyric vocabulary learning app</p>
                 </div>
+                <div className="hero">
                 <div className="lyrics" ref={setLyricsC}>
                     {exampleLyrics.map((l, i) => (
                         <div className={`lyric ${i == 3 && "activeLyric"}`}>
@@ -239,6 +240,8 @@ const Start = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+                <Link to="/play/video/ZS6p32gX_yk" className="hero-link"><p>Try it</p><FiArrowRightCircle /></Link>
                 </div>
             </div>
             <form className="main" onSubmit={submitId}>
