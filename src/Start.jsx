@@ -73,6 +73,11 @@ const Start = () => {
             name: "AKB48",
             id: "https://music.youtube.com/playlist?list=OLAK5uy_mD945kVxrze0akycwVSdxGfvrLucyOKmg",
             image: "https://images.genius.com/44c505fe75621c6048f8646f994264c0.1000x1000x1.jpg"
+        },
+        {
+            name: "Utada Hikaru",
+            id: "https://music.youtube.com/playlist?list=OLAK5uy_lsKZ08jS7vP5yYfkUWyUkxkdi1NRiOh2E",
+            image: "https://images.genius.com/be847a0a967c54685101ae1498ae3ef4.1000x1000x1.png"
         }
     ]
     const playList = [

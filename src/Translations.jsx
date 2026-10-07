@@ -45,17 +45,21 @@ const Translations = () => {
     function searchQuery(e){
         setQuery(e.target.value);
     }
-    const removeTranslation = (word) => {
+    const removeTranslation = (word, translation) => {
         setTranslations(prev => {
-            const { [word]: _, ...newTranslations } = prev;
+            const { [word]: tempWord, ...tempTranslations } = prev;
+            const {[translation]: _, ...newWord} = tempWord;
+            const newTranslations = {[word]: newWord, ...tempTranslations};
             localStorage.setItem("translations", JSON.stringify(newTranslations))
             return newTranslations;
         });
     }
     return (
-        <div className="main">
-            <h1>Translations</h1>
-            <div className="vocabularyTable">
+        <main>
+            <div className="intro">
+                <h1>Translations</h1>
+            </div>
+            <div className="vocabularyTable main">
                 <h2>Vocabulary</h2>
                 <input type="text" className="mainField" placeholder="Search for a word..." value={query} onChange={searchQuery}></input>
                 <table>
@@ -90,24 +94,24 @@ const Translations = () => {
                                 })}</td>
                                 
                                 <td className="expand-cell">{Object.keys(translations[word]).map((t,i)=>{
-                                    return <>{translations[word][t].sentences.map(sent => {
+                                    return <><div className="sentence-container">{translations[word][t].sentences.map(sent => {
 
                                         return <Link className="sentence" title={sent.song} to={`/play/video/${sent.youtube_id}?time=${sent.time && convertTime(sent.time)}`}>{sent.sentence}</Link>
 
-                                    })}
+                                    })}</div>
                                     {i != Object.keys(translations[word]).length - 1 && <hr />}
                                     </>
                                 })}</td>
-                                <td>
-                                    <button
+                                <td> {Object.keys(translations[word]).map((t,i)=>{
+                                    return <><button
                                         onClick={() => {
-                                            removeTranslation(word)
+                                            removeTranslation(word,t)
                                         }}
                                         className="delete-button"
                                     >
                                         <FiMinusCircle size="1.5rem" />
-                                    </button>
-                                </td>
+                                    </button>{i != Object.keys(translations[word]).length - 1 && <hr />}</>
+                                })}</td>
                             </tr>
                         }) : <p>No translations, listen to some songs!</p>}
                     </tbody>
@@ -129,7 +133,7 @@ const Translations = () => {
                 <textarea value={importedTranslations} onChange={e=>setITranslations(e.target.value)}/>
                 <input type="submit" value="Import"/>
             </form>
-        </div>
+        </main>
     )
 }
 export default Translations;

@@ -265,9 +265,11 @@ const Play = () => {
             return next;
         });
     };
-    const removeTranslation = (word) => {
+    const removeTranslation = (word, translation) => {
         setTranslations(prev => {
-            const { [word]: _, ...newTranslations } = prev;
+            const { [word]: tempWord, ...tempTranslations } = prev;
+            const {[translation]: _, ...newWord} = tempWord;
+            const newTranslations = {[word]: newWord, ...tempTranslations};
             localStorage.setItem("translations", JSON.stringify(newTranslations))
             return newTranslations;
         });
@@ -437,7 +439,7 @@ const Play = () => {
                             }
                             <div className="lyric-container">
                                 {(formatTokens(allTokens?.[i]?.tokens) || segment(lyric)).filter(s => s.segment.trim().length !== 0).map((s, i) => {
-                                    const grammar = [["感動詞", "記号", "フィラー", "助動詞"], ["間投", "非自立", "接尾","格助詞","準体助詞"]]
+                                    const grammar = [["感動詞", "記号", "フィラー", "助動詞"], ["間投", "非自立", "接尾","格助詞","準体助詞","係助詞","接続助詞","終助詞"]]
                                     // const posClasses = {
                                     //     vocab: ["形容詞"],
                                     //     grammar: [["接続詞"], ["非自立", "動詞非自立的", "接尾"]],
@@ -523,16 +525,16 @@ const Play = () => {
                                     </>
                                 })}
                                 </td>
-                                <td>
-                                    <button
+                                <td> {Object.keys(translations[word]).map((t,i)=>{
+                                    return <><button
                                         onClick={() => {
-                                            removeTranslation(word)
+                                            removeTranslation(word,t)
                                         }}
                                         className="delete-button"
                                     >
                                         <FiMinusCircle size="1.5rem" />
-                                    </button>
-                                </td>
+                                    </button>{i != Object.keys(translations[word]).length - 1 && <hr />}</>
+                                })}</td>
                             </tr>
                         })}
                     </tbody>

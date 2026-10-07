@@ -14,10 +14,12 @@ html, body {
   padding: 0;
 }
 body{
+  background-color: var(--neutral);
   background-image: url("patterntransp.svg");
+  color: var(--primary-dark);
 }
 header{
-  background-color: aquamarine;
+  background-color: var(--primary-dark);
   padding: 0.5rem;
   display: flex;
   justify-content: space-between;
@@ -28,5 +30,14 @@ header img{
 }
 header a{
   text-decoration: none;
-  color: navy;
+  color: white;
+}
+:root{
+  --main-bg: #FBC07C;
+  --card-bg: #D28C8E;
+  --primary: #931950;
+  --secondary: #A25A76;
+  --primary-dark: #3C2E44;
+  --secondary-dark: #553C48;
+  --neutral: #FFF8F1;
 }
