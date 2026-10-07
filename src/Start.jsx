@@ -1,10 +1,16 @@
 import "./Start.css"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom";
 const Start = () => {
     const [id, setId] = useState("");
     const [error, setError] = useState(null);
     const navigate = useNavigate();
+    const [lyricsC, setLyricsC] = useState(null);
+    const [clicked, setClicked] = useState([]);
+    useEffect(()=>{
+        if (!lyricsC) return;
+        lyricsC.scrollTop = lyricsC.scrollHeight;
+    },[lyricsC])
     const submitId = (e, autoid) =>{
         const ID = autoid || id;
         e.preventDefault();
@@ -97,11 +103,137 @@ const Start = () => {
             image: "https://yt3.googleusercontent.com/D0SgMSzShvTcdvJUciiIwaWH2cXZxdZUA67XPyFQr9WWw4bYdfSR0dz9ZARwYeLmFBn2Ya5pqbbjgA=w544-h544-l90-rj"
         }
     ]
+    const exampleLyrics = [
+        [
+            {
+                word: "Stay"
+            },
+            {
+                word: "with"
+            },
+            {
+                word: "me"
+            },
+        ],
+        [
+            {
+                word: "真夜中",
+                meaning: "dead of night",
+                reading: "まよなか"
+            },
+            {
+                word: "の"
+            },
+            {
+                word: "ドア",
+                meaning: "door"
+            },
+            {
+                word: "を"
+            },
+            {
+                word: "たたき",
+                meaning: "to strike"
+            },
+        ],
+        [
+            {
+                word: "帰ら",
+                meaning: "to return",
+                reading: "かえる"
+            },
+            {
+                word: "ない"
+            },
+            {
+                word: "で"
+            },
+            {
+                word: "と"
+            },
+            {
+                word: "泣い",
+                meaning: "to cry",
+                reading: "なく"
+            },
+            {
+                word: "た"
+            },
+        ],
+        [
+            {
+                word: "あの"
+            },
+            {
+                word: "季節",
+                meaning: "season",
+                reading: "きせつ"
+            },
+            {
+                word: "が"
+            },
+            {
+                word: "今",
+                meaning: "now",
+                reading: "いま"
+            },
+            {
+                word: "目",
+                meaning: "sight",
+                reading: "め"
+            },
+            {
+                word: "の"
+            },
+            {
+                word: "前",
+                meaning: "in front (of)",
+                reading: "まえ"
+            },
+        ],
+        [
+            {
+                word: "Stay"
+            },
+            {
+                word: "with"
+            },
+            {
+                word: "me"
+            },
+        ]
+    ]
     return (
         <main>
             <div className="intro">
-                <h1 className="title">LangLyr</h1>
-                <p>A Japanese lyric vocabulary learning app</p>
+                <div>
+                    <h1 className="title">LangLyr</h1>
+                    <p>A Japanese lyric vocabulary learning app</p>
+                </div>
+                <div className="lyrics" ref={setLyricsC}>
+                    {exampleLyrics.map((l,i)=>(
+                        <div className={`lyric ${i == 3 && "activeLyric"}`}>
+                        <div className="lyric-container">
+                            {l.map(s=>(
+                                <span className="segmentContainer">
+                                    <p className="furigana">{clicked.includes(s.word) && s.meaning}</p>
+                                    <p 
+                                        className={`segment${s.meaning && !clicked.includes(s.word) ? " japanese" : ""}`}
+                                        onClick={s.meaning && !clicked.includes(s.word) ? e=>{
+                                            e.target.classList.add('loading-translation');
+                                            setTimeout(()=>{
+                                                setClicked(prev=>[...prev, s.word])
+                                                e.target.classList.remove('loading-translation');
+                                            },1000)
+                                        } : undefined}
+                                    >{s.word}</p>
+                                    <p className="kanji">{clicked.includes(s.word) && s.reading}</p>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                    ))}
+                </div>
             </div>
             <form className="main" onSubmit={submitId}>
                 <input type="text" placeholder="Enter a YouTube video or playlist URL" className="mainField" value={id} onChange={changeId}/>

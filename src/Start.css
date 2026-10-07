@@ -18,7 +18,7 @@
   color: white;
 }
 .mainSubmit:hover{
-  box-shadow: 0 0 0 0.2rem var(--neutral);
+  box-shadow: 0 0 0 0.2rem var(--main-bg);
   top: 0;
   right: 0;
 }
@@ -79,15 +79,23 @@
   margin: 0;
 }
 .intro{
-  width: 100vw;
-  text-align: center;
-  height: 40vh;
+  padding: 0 10vw 0 10vw;
+  width: 80vw;
+  height: 85dvh;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
   background-image: url("assets/pattern.svg");
   background-position: 0 -4.4rem;
   background-repeat: repeat;
+  justify-content: flex-start;
+}
+.intro > *{
+  flex: 1;
+}
+.intro .lyrics{
+  flex: 0.5;
+  height: 20vh;
+  box-shadow: -0.5rem -0.5rem 0 var(--secondary);
 }
 main .main{
   position: relative;

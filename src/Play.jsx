@@ -20,8 +20,8 @@ const fetcher = async (url) => {
 };
 const japaneseRegex = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const kanjiRegex = /\p{Script=Han}/u;
-const baseURL = "https://api.langlyr.phyotp.dev/"
 const Play = () => {
+    const baseURL = window.location.href.startsWith("https://") ? "https://api.langlyr.phyotp.dev/" : "http://127.0.0.1:5001/";
     const { type, id } = useParams();
     const [searchParams] = useSearchParams();
     const playerRef = useRef(null);
